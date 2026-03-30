@@ -115,24 +115,9 @@ ProjectSettings/                           — Physics2D gravity is -20
 
 1. **Install Git** if you don't have it: https://git-scm.com/download/win
 
-2. **Create a private repo on GitHub:**
-   - Go to https://github.com/new
-   - Repository name: `project-jetpack`
-   - Select **Private**
-   - Do NOT check any boxes (no README, no .gitignore, no license)
-   - Click **Create repository**
+2. **The repo is already created:** https://github.com/gameboyjisoo/project-jetpack (private)
 
-3. **Open a terminal** and run these commands:
-   ```bash
-   cd "C:\Jisoo's Stuff\Personal Projects\Unity\Project Jetpack"
-   git init
-   git add -A
-   git commit -m "Initial commit: movement prototype"
-   git branch -M main
-   git remote add origin https://github.com/YOUR_USERNAME/project-jetpack.git
-   git push -u origin main
-   ```
-   GitHub will prompt you to log in via browser or token.
+3. Git is already initialized and the first commit has been pushed. You're good to go.
 
 ### Saving Your Progress (After Changes)
 
@@ -149,7 +134,7 @@ Or from Claude Code, just type `/commit` and Claude will generate a commit messa
 ### Downloading on Another Machine
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/project-jetpack.git
+git clone https://github.com/gameboyjisoo/project-jetpack.git
 ```
 Then open the folder in Unity Hub.
 

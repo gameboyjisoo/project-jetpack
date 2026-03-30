@@ -6,7 +6,8 @@ A fast-paced 2D pixel art platformer built in Unity 6 (6000.0.34f1). Inspired by
 The design document (Korean) is at: `C:\Users\pz_ma\OneDrive - KRAFTON\문서\Knights (원탁의 기사)\My Proposals\2024.11 Project Jetpack\Project Jetpack.docx`
 
 ## Project Location
-`C:\Jisoo's Stuff\Personal Projects\Unity\Project Jetpack`
+- Local: `C:\Jisoo's Stuff\Personal Projects\Unity\Project Jetpack`
+- GitHub: https://github.com/gameboyjisoo/project-jetpack (private)
 
 ## How We Work
 This project is built step-by-step, collaboratively. Each change should be small and testable — "add screen shake on landing" sized. Always discuss game design before coding. Never cram multiple features into one session. This is a middle ground between a tutorial and automated dev — the developer should understand every change.
