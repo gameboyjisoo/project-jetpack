@@ -21,14 +21,21 @@
 |---|---|
 | Move | Left Stick / D-pad |
 | Jump | A (South) |
-| Jetpack (hold) | RT (Right Trigger) |
+| Jetpack (press to activate, hold) | RT (Right Trigger) |
 | Fire (Secondary Booster) | X (West) |
 
 ### How Movement Works
-- **Ground movement** is Celeste-style — near-instant acceleration and deceleration, snappy direction changes.
-- **Jump** is variable height — tap for short hop, hold for full jump. Has coyote time (0.08s) and jump buffering (0.1s). Floats briefly at the apex.
-- **Jetpack** (Booster 2.0 style): hold to boost in 4 cardinal directions. Direction = most recently pressed arrow key. Pure cardinal movement, no gravity during boost. ~1 second of fuel, recharges on landing. On release: horizontal velocity halves (drift), upward velocity halves, downward transitions to normal gravity.
+- **Ground movement** is Celeste-style — near-instant acceleration and deceleration, snappy direction changes. Air control at 65% of ground.
+- **Jump** is Celeste-style variable height — hold jump to maintain upward speed for 0.2 seconds, release to let gravity take over naturally (no instant velocity cut). Adds a small horizontal boost in your input direction. Has coyote time (0.1s) and jump buffering (0.1s). Floats at the apex with half gravity while holding jump.
+- **Jetpack** (Booster 2.0 style): press to activate while airborne, hold to sustain. Boosts in 4 cardinal directions at ~1.9× run speed. Direction = most recently pressed arrow key. Gravity stays active during horizontal boost (you sink slightly) and downward boost (you accelerate). Gravity off during upward boost (maintains speed). ~1 second of fuel, recharges on landing. On release: horizontal boost halves X velocity, upward boost halves Y velocity, downward boost has no halving. Hitting a wall during horizontal boost nudges you upward.
 - **Secondary Booster** fires a projectile and pushes you in the opposite direction (recoil). 3 shots, recharges on ground. For precise micro-adjustments.
+
+### Reading Your Fuel (No HUD Bar)
+There is no fuel bar on screen. Instead, the jetpack tells you its state directly:
+
+- **Watch the exhaust**: Bright cyan = full. Turns orange at half, red near empty. When it starts sputtering/flickering, you have about 0.2 seconds left.
+- **Listen to the engine**: At full fuel, the jetpack fires rapid bursts (like Cave Story's Booster). As fuel drains, the bursts slow down with gaps between them, and the pitch drops. Near empty, the pitch wobbles erratically. When you hear a dry click, you're out.
+- Both cues work together — after a few runs, reading fuel becomes instinctive.
 
 ---
 
@@ -48,8 +55,10 @@ Assets/Scripts/
     JetpackGas.cs              — Gas resource system with events
     SecondaryBooster.cs        — Recoil weapon / precision movement
     PlayerAnimator.cs          — Drives Animator from player state
+    JetpackParticles.cs        — Exhaust color shift & sputter (fuel visual cue)
+    JetpackAudioFeedback.cs    — Engine pitch decay & sputter SFX (fuel audio cue)
   UI/
-    GasMeterUI.cs              — Gas fill bar (not wired up yet)
+    GasMeterUI.cs              — Legacy gas fill bar (not used — minimal UI philosophy)
 ```
 
 ### Other Key Locations
@@ -66,12 +75,16 @@ ProjectSettings/                           — Physics2D gravity is -20
 |---|---|---|
 | Move Speed | 10 | Ground run speed |
 | Ground Accel/Decel | 120/120 | Near-instant speed changes |
+| Air Mult | 0.65 | Air control (Celeste's AirMult) |
 | Jump Force | 18 | Jump height |
-| Jump Cut Multiplier | 0.3 | How much tap-jump is cut |
-| Jetpack Thrust | 11 | Boost speed (near walk speed) |
+| Var Jump Time | 0.2s | Hold window for variable jump height (Celeste) |
+| Jump H Boost | 2.5 | Horizontal boost added on jump (Celeste) |
+| Coyote Time | 0.1s | Jump grace after leaving ground (Celeste) |
+| Boost Speed | 19 | Jetpack activation velocity (~1.9× run speed, Booster 2.0) |
 | Gas Consumption Rate | 100 | ~1 second of fuel |
+| Wall Nudge Speed | 2 | Upward push when hitting wall during horizontal boost |
 | Fall Gravity Multiplier | 2.0 | Fast fall speed |
-| Apex Gravity Multiplier | 0.4 | Jump peak hang time |
+| Apex Gravity Multiplier | 0.5 | Jump peak hang time (requires holding jump, Celeste) |
 | Max Fall Speed | 30 | Terminal velocity |
 
 ---

@@ -9,27 +9,33 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float moveSpeed = 10f;
     [SerializeField] private float groundAcceleration = 120f;
     [SerializeField] private float groundDeceleration = 120f;
+    [SerializeField] private float airMult = 0.65f;
 
-    [Header("Jump")]
+    [Header("Jump — Celeste")]
     [SerializeField] private float jumpForce = 18f;
-    [SerializeField] private float jumpCutMultiplier = 0.3f;
-    [SerializeField] private float coyoteTime = 0.08f;
+    [SerializeField] private float varJumpTime = 0.2f;
+    [SerializeField] private float jumpHBoost = 2.5f;
+    [SerializeField] private float coyoteTime = 0.1f;
     [SerializeField] private float jumpBufferTime = 0.1f;
 
-    [Header("Jetpack")]
-    [SerializeField] private float jetpackThrust = 11f;
+    [Header("Jetpack — Booster 2.0")]
+    [SerializeField] private float boostSpeed = 19f;
     [SerializeField] private float gasConsumptionRate = 100f;
+    [SerializeField] private float wallNudgeSpeed = 2f;
 
     [Header("Gravity")]
     [SerializeField] private float fallGravityMultiplier = 2.0f;
-    [SerializeField] private float apexGravityMultiplier = 0.4f;
-    [SerializeField] private float apexThreshold = 3f;
+    [SerializeField] private float apexGravityMultiplier = 0.5f;
+    [SerializeField] private float apexThreshold = 4f;
     [SerializeField] private float maxFallSpeed = 30f;
 
     [Header("Ground Check")]
     [SerializeField] private Vector2 groundCheckSize = new Vector2(0.8f, 0.05f);
     [SerializeField] private Vector2 groundCheckOffset = new Vector2(0f, -0.5f);
     [SerializeField] private LayerMask groundLayer;
+
+    [Header("Wall Check")]
+    [SerializeField] private float wallCheckDistance = 0.6f;
 
     [Header("Input")]
     [SerializeField] private InputActionAsset inputActions;
@@ -47,6 +53,8 @@ public class PlayerController : MonoBehaviour
     private Vector2 moveInput;
     private Vector2 prevMoveInput;
     private bool jetpackHeld;
+    private bool prevJetpackHeld;
+    private bool jetpackJustPressed;
     private bool jumpHeld;
     private bool prevJumpHeld;
     private bool jumpRequested;
@@ -59,9 +67,12 @@ public class PlayerController : MonoBehaviour
     private float jumpBufferTimer;
     private bool isJetpacking;
     private bool wasJetpacking;
-    private bool didJump; // tracks if we're in a jump arc (for apex gravity)
+    private bool didJump;
+    private float varJumpTimer;
+    private float varJumpSpeed;
     private bool facingRight = true;
     private Vector2 jetpackDirection = Vector2.up;
+    private int boostMode; // 0=off, 1=horizontal, 2=up, 3=down
 
     public bool IsGrounded => isGrounded;
     public bool IsJetpacking => isJetpacking;
@@ -113,7 +124,12 @@ public class PlayerController : MonoBehaviour
             UpdateJetpackDirection();
         }
         if (jetpackAction != null)
+        {
+            prevJetpackHeld = jetpackHeld;
             jetpackHeld = jetpackAction.IsPressed();
+            if (jetpackHeld && !prevJetpackHeld)
+                jetpackJustPressed = true;
+        }
 
         // Manual edge detection for jump — more reliable than WasPressedThisFrame
         if (jumpAction != null)
@@ -138,9 +154,9 @@ public class PlayerController : MonoBehaviour
 
         HandleJump();
         ApplyJetpack();
-        HandleJetpackEnd();
         ApplyHorizontalMovement();
         ApplyGravityModifiers();
+        ApplyVarJump();
         ClampFallSpeed();
     }
 
@@ -154,7 +170,9 @@ public class PlayerController : MonoBehaviour
         {
             jetpackGas?.Recharge();
             isJetpacking = false;
+            boostMode = 0;
             didJump = false;
+            varJumpTimer = 0f;
         }
 
         if (wasGrounded && !isGrounded && rb.linearVelocity.y <= 0)
@@ -164,6 +182,7 @@ public class PlayerController : MonoBehaviour
     private void UpdateTimers()
     {
         coyoteTimer -= Time.fixedDeltaTime;
+        varJumpTimer -= Time.fixedDeltaTime;
 
         if (jumpRequested)
         {
@@ -175,21 +194,27 @@ public class PlayerController : MonoBehaviour
 
     private void HandleJump()
     {
-        // Variable jump height: cut upward velocity on release
+        // Celeste variable jump: releasing jump stops maintaining upward speed
+        // (gravity takes over naturally — no instant velocity cut)
         if (jumpReleased)
         {
-            if (rb.linearVelocity.y > 0 && !isJetpacking)
-                rb.linearVelocity = new Vector2(rb.linearVelocity.x, rb.linearVelocity.y * jumpCutMultiplier);
+            if (varJumpTimer > 0f)
+                varJumpTimer = 0f;
             jumpReleased = false;
         }
 
         bool canJump = isGrounded || coyoteTimer > 0f;
-        if (jumpBufferTimer > 0f && canJump)
+        if (jumpBufferTimer > 0f && canJump && !isJetpacking)
         {
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
+            // Celeste: horizontal boost in input direction on jump
+            float newVx = rb.linearVelocity.x + moveInput.x * jumpHBoost;
+            rb.linearVelocity = new Vector2(newVx, jumpForce);
+
             jumpBufferTimer = 0f;
             coyoteTimer = 0f;
             didJump = true;
+            varJumpTimer = varJumpTime;
+            varJumpSpeed = jumpForce;
         }
     }
 
@@ -208,45 +233,87 @@ public class PlayerController : MonoBehaviour
 
     private void ApplyJetpack()
     {
-        isJetpacking = false;
+        // Consume edge-detected press
+        bool justPressed = jetpackJustPressed;
+        jetpackJustPressed = false;
 
-        if (!jetpackHeld || isGrounded || jetpackGas == null)
-            return;
-
-        if (jetpackGas.CurrentGas <= 0f)
-            return;
-
-        rb.gravityScale = 0f;
-        rb.linearVelocity = jetpackDirection * jetpackThrust;
-
-        jetpackGas.ConsumeGas(gasConsumptionRate * Time.fixedDeltaTime);
-        isJetpacking = true;
-
-        // Gas just ran out this frame — same drift rules as releasing the button
-        if (jetpackGas.CurrentGas <= 0f)
+        // Booster 2.0 activation: first press while airborne with gas
+        if (justPressed && !isGrounded && !isJetpacking
+            && jetpackGas != null && jetpackGas.HasGas)
         {
-            Vector2 vel = rb.linearVelocity;
-            vel.x *= 0.5f;
-            vel.y = vel.y > 0 ? vel.y * 0.5f : 0f;
-            rb.linearVelocity = vel;
-            isJetpacking = false;
-            didJump = false;
+            ActivateBoost();
+        }
+
+        if (!isJetpacking) return;
+
+        // End: released button
+        if (!jetpackHeld)
+        {
+            EndBoost();
+            return;
+        }
+
+        // Consume gas
+        jetpackGas.ConsumeGas(gasConsumptionRate * Time.fixedDeltaTime);
+
+        // Gas empty
+        if (!jetpackGas.HasGas)
+        {
+            EndBoost();
+            return;
+        }
+
+        // Booster 2.0: wall nudge during horizontal boost (climb walls)
+        if (boostMode == 1 && IsTouchingWall())
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, wallNudgeSpeed);
+    }
+
+    private void ActivateBoost()
+    {
+        isJetpacking = true;
+        didJump = false;
+        varJumpTimer = 0f;
+
+        // Booster 2.0: instant max velocity in chosen direction, zero perpendicular axis
+        if (jetpackDirection == Vector2.up)
+        {
+            boostMode = 2;
+            rb.linearVelocity = new Vector2(0f, boostSpeed);
+        }
+        else if (jetpackDirection == Vector2.down)
+        {
+            boostMode = 3;
+            rb.linearVelocity = new Vector2(0f, -boostSpeed);
+        }
+        else
+        {
+            boostMode = 1;
+            rb.linearVelocity = new Vector2(jetpackDirection.x * boostSpeed, 0f);
         }
     }
 
-    private void HandleJetpackEnd()
+    private void EndBoost()
     {
-        if (!wasJetpacking || isJetpacking || isGrounded)
-            return;
-
-        // Booster 2.0 style: halve horizontal velocity for drift,
-        // but for vertical, only halve upward — let downward fall naturally
+        // Booster 2.0: mode-specific velocity halving
         Vector2 vel = rb.linearVelocity;
-        vel.x *= 0.5f;
-        vel.y = vel.y > 0 ? vel.y * 0.5f : 0f;
-        rb.linearVelocity = vel;
+        if (boostMode == 1)       // horizontal: halve X only
+            vel.x *= 0.5f;
+        else if (boostMode == 2)  // upward: halve Y only
+            vel.y *= 0.5f;
+        // boostMode 3 (down): no halving — matches Cave Story
 
-        didJump = false;
+        rb.linearVelocity = vel;
+        isJetpacking = false;
+        boostMode = 0;
+    }
+
+    private bool IsTouchingWall()
+    {
+        if (Mathf.Abs(jetpackDirection.x) < 0.5f) return false;
+        Vector2 origin = (Vector2)transform.position;
+        RaycastHit2D hit = Physics2D.Raycast(origin, new Vector2(jetpackDirection.x, 0f),
+            wallCheckDistance, groundLayer);
+        return hit.collider != null;
     }
 
     private void ApplyHorizontalMovement()
@@ -255,22 +322,11 @@ public class PlayerController : MonoBehaviour
 
         float targetSpeed = moveInput.x * moveSpeed;
         float currentSpeed = rb.linearVelocity.x;
-        float speedDiff = targetSpeed - currentSpeed;
 
-        // Use higher rate when accelerating vs decelerating, less control in air
-        float accel, decel;
-        if (isGrounded)
-        {
-            accel = groundAcceleration;
-            decel = groundDeceleration;
-        }
-        else
-        {
-            accel = groundAcceleration * 0.8f;
-            decel = groundDeceleration * 0.5f;
-        }
-
-        float rate = Mathf.Abs(targetSpeed) > 0.01f ? accel : decel;
+        // Celeste: single air control multiplier (0.65)
+        float mult = isGrounded ? 1f : airMult;
+        float rate = Mathf.Abs(moveInput.x) > 0.01f ? groundAcceleration : groundDeceleration;
+        rate *= mult;
 
         // MoveTowards for crisp, predictable movement instead of force-based mush
         float newSpeed = Mathf.MoveTowards(currentSpeed, targetSpeed, rate * Time.fixedDeltaTime);
@@ -282,7 +338,12 @@ public class PlayerController : MonoBehaviour
 
     private void ApplyGravityModifiers()
     {
-        if (isJetpacking) return;
+        if (isJetpacking)
+        {
+            // Booster 2.0: upward thrust cancels gravity; horizontal/downward keep gravity active
+            rb.gravityScale = (boostMode == 2) ? 0f : 1f;
+            return;
+        }
 
         float vy = rb.linearVelocity.y;
 
@@ -291,14 +352,25 @@ public class PlayerController : MonoBehaviour
             // Fast fall
             rb.gravityScale = fallGravityMultiplier;
         }
-        else if (didJump && Mathf.Abs(vy) < apexThreshold)
+        else if (didJump && jumpHeld && Mathf.Abs(vy) < apexThreshold)
         {
-            // Apex hang — only during jumps, not after jetpack
+            // Celeste apex: half gravity when near peak AND holding jump
             rb.gravityScale = apexGravityMultiplier;
         }
         else
         {
             rb.gravityScale = 1f;
+        }
+    }
+
+    // Celeste variable jump: maintain upward velocity while holding jump within the window.
+    // After the window expires or jump is released, gravity decelerates naturally.
+    private void ApplyVarJump()
+    {
+        if (varJumpTimer > 0f && jumpHeld && rb.linearVelocity.y >= 0f)
+        {
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x,
+                Mathf.Max(rb.linearVelocity.y, varJumpSpeed));
         }
     }
 

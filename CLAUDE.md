@@ -18,17 +18,20 @@ This project is built step-by-step, collaboratively. Each change should be small
 - Uses Rigidbody2D physics with `rb.linearVelocity` (Unity 6 API, not deprecated `rb.velocity`).
 - **Input reading in Update, all physics in FixedUpdate.** Jump/fire inputs use manual edge detection (tracking previous frame state via `IsPressed()`), NOT `WasPressedThisFrame()` which is unreliable depending on Input System update mode.
 - Input actions loaded from `Assets/Resources/PlayerInput.inputactions` via `Resources.Load` at runtime. No PlayerInput component needed on the GameObject.
-- **Ground movement**: Celeste-style — `MoveTowards` for crisp instant acceleration/deceleration (not force-based). Air control is slightly reduced (80% accel, 50% decel).
-- **Jump**: Variable height (hold for full, tap for short). Apex gravity reduction (`apexGravityMultiplier`) only applies during jump arcs (`didJump` flag), not after jetpack.
-- **Coyote time** (0.08s) and **jump buffer** (0.1s) for forgiving input.
+- **Ground movement**: Celeste-style — `MoveTowards` for crisp instant acceleration/deceleration (not force-based). Air control uses single 0.65 multiplier (Celeste's `AirMult`).
+- **Jump**: Celeste-accurate variable height via `varJumpTimer` (0.2s window maintains upward speed while holding jump; releasing lets gravity decelerate naturally — no instant velocity cut). Horizontal boost (`jumpHBoost`) added in input direction on jump. Apex gravity (0.5×) requires holding jump AND `|vy| < apexThreshold`.
+- **Coyote time** (0.1s, Celeste's `JumpGraceTime`) and **jump buffer** (0.1s) for forgiving input.
 
 ### Jetpack System (Booster 2.0 Style)
-- **Hold-to-use**, 4 cardinal directions only. Direction = most recently pressed direction key (edge-detected per frame).
-- **Pure cardinal movement** — gravity fully disabled during boost, velocity set directly.
+- **Press-to-activate**, 4 cardinal directions only. Direction = most recently pressed direction key (edge-detected per frame). Jetpack button must be newly pressed while airborne (edge-detected, not hold-to-start).
+- **Booster 2.0-accurate activation**: on first press, velocity set to `boostSpeed` (~1.9× moveSpeed, matching Cave Story's terminal velocity ratio) in the chosen cardinal direction. Perpendicular axis zeroed. Velocity is set ONCE on activation, not every frame.
+- **Gravity interaction**: gravity stays active during horizontal and downward boost (player sinks during horizontal boost, accelerates during downward). Gravity disabled during upward boost (thrust cancels gravity, maintaining speed — matches Booster 2.0's thrust/gravity equilibrium).
 - **~1 second of fuel** (100 gas, 100/sec drain). Recharges on landing.
-- **On release or gas empty**: horizontal velocity halved (drift), upward velocity halved, downward velocity zeroed (gravity takes over naturally). This creates the Booster 2.0 coast/drift feel.
+- **Mode-specific halving on release/empty** (matches Cave Story exactly): horizontal boost → halve X velocity only. Upward boost → halve Y velocity only. Downward boost → NO halving.
+- **Wall nudge**: during horizontal boost, hitting a wall sets a small upward velocity (`wallNudgeSpeed`), allowing wall climbing — matches Booster 2.0's `ym = -0x100` on wall contact.
+- **Boost modes** tracked via `boostMode`: 0=off, 1=horizontal, 2=up, 3=down.
 - **Jump and jetpack are mutually exclusive** — can't jump while jetpacking.
-- Gas system is separate: `JetpackGas.cs` with events for UI.
+- Gas system is separate: `JetpackGas.cs` with events. Fuel state is communicated via `JetpackParticles.cs` (visual) and `JetpackAudioFeedback.cs` (audio) — no HUD bar.
 
 ### Secondary Booster (SecondaryBooster.cs)
 - Fires a projectile (if prefab assigned) and applies recoil in the opposite direction.
@@ -54,8 +57,14 @@ This project is built step-by-step, collaboratively. Each change should be small
 - `RoomManager` singleton detects player crossing room boundaries.
 - Currently inactive (camera is in follow mode, only one test room exists).
 
-### UI (GasMeterUI.cs)
-- Smoothly animated gas fill bar. Not wired up in the scene yet.
+### Jetpack Fuel Feedback (Minimal UI Philosophy)
+The game uses **diegetic feedback** instead of HUD bars — the player reads fuel state from the jetpack itself, not from a UI element. This keeps the screen clean and the player's eyes on the action.
+
+- **Exhaust color shift** (`JetpackParticles.cs`): Particle color shifts through a two-stage gradient as fuel drains — cyan (full) to orange (mid) to red (empty). Below 20% fuel, emission sputters on/off rapidly to signal urgency.
+- **Audio burst feedback** (`JetpackAudioFeedback.cs`): Plays a short burst SFX (`SE_14_2E.wav`) repeatedly via `PlayOneShot`. At full fuel, bursts fire near-consecutively (0.08s interval, matching Cave Story's rapid-fire feel). As fuel drains, the interval widens to 0.3s (audible dead time between bursts). Pitch drops from 1.0 to 0.55 with fuel. Below 30% fuel, random pitch jitter adds a "struggling engine" feel. On empty, a dry-fire click plays once.
+- **GasMeterUI.cs** exists as a legacy fill bar but is **intentionally not wired up**. The design direction is to avoid persistent HUD elements for moment-to-moment mechanics. A bar may return later as an accessibility option.
+
+**Design principle**: If the player needs to look away from the character to understand their state, the feedback has failed. All fuel cues are embodied on/around the player sprite or in audio.
 
 ### Input
 - Uses Unity's New Input System (not legacy).
@@ -92,16 +101,20 @@ This project is built step-by-step, collaboratively. Each change should be small
 |---|---|---|
 | moveSpeed | 10 | Near-instant with 120 accel |
 | groundAccel/Decel | 120/120 | Celeste-level snappy |
+| airMult | 0.65 | Celeste's single air control multiplier |
 | jumpForce | 18 | Tall, expressive jumps |
-| jumpCutMultiplier | 0.3 | Big difference tap vs hold |
-| coyoteTime | 0.08s | Forgiving but not sloppy |
+| varJumpTime | 0.2s | Celeste variable jump hold window (12 frames) |
+| jumpHBoost | 2.5 | Celeste horizontal boost on jump |
+| coyoteTime | 0.1s | Celeste's JumpGraceTime (6 frames) |
 | jumpBufferTime | 0.1s | |
-| jetpackThrust | 11 | Slightly above walk speed |
+| boostSpeed | 19 | ~1.9× moveSpeed (Booster 2.0 terminal velocity ratio) |
 | gasConsumptionRate | 100 | ~1 second of boost |
+| wallNudgeSpeed | 2 | Upward push when hitting wall during horizontal boost |
 | fallGravityMultiplier | 2.0 | Fast fall |
-| apexGravityMultiplier | 0.4 | Hang time at jump peak |
-| apexThreshold | 3.0 | Velocity below which apex kicks in |
+| apexGravityMultiplier | 0.5 | Celeste's half-gravity at jump peak (requires holding jump) |
+| apexThreshold | 4.0 | Velocity below which apex kicks in |
 | maxFallSpeed | 30 | |
+| wallCheckDistance | 0.6 | Raycast distance for wall detection during boost |
 | Project gravity | -20 | In Physics2D settings |
 
 ## Current State
@@ -109,9 +122,9 @@ Movement prototype with Celeste-style ground controls and Booster 2.0-style jetp
 
 ## What's NOT Done Yet
 - Movement feel is being actively tuned (current session)
-- No screen shake, particles, or juice
-- No SFX or music
-- No title screen or UI beyond the gas meter script (not wired up)
+- No screen shake or general juice beyond jetpack exhaust feedback
+- No SFX or music beyond jetpack audio feedback (needs actual audio clips assigned)
+- No title screen or persistent HUD (intentional — minimal UI philosophy)
 - No actual level design beyond the test room
 - No death/respawn system
 - No momentum/acceleration tech for speedrunners
