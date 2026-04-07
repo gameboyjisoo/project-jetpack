@@ -25,8 +25,8 @@ This project is built step-by-step, collaboratively. Each change should be small
 ### Jetpack System (Booster 2.0 Style)
 - **Press-to-activate**, 4 cardinal directions only. Direction = most recently pressed direction key (edge-detected per frame). Jetpack button must be newly pressed while airborne (edge-detected, not hold-to-start).
 - **Booster 2.0-accurate activation**: on first press, velocity set to `boostSpeed` (~1.9× moveSpeed, matching Cave Story's terminal velocity ratio) in the chosen cardinal direction. Perpendicular axis zeroed. Velocity is set ONCE on activation, not every frame.
-- **Gravity interaction**: gravity stays active during horizontal and downward boost (player sinks during horizontal boost, accelerates during downward). Gravity disabled during upward boost (thrust cancels gravity, maintaining speed — matches Booster 2.0's thrust/gravity equilibrium).
-- **~1 second of fuel** (100 gas, 100/sec drain). Recharges on landing.
+- **Deterministic air movement (DESIGN AXIOM)**: Gravity = 0 during ALL jetpack directions. The player must know exactly where they'll end up — no invisible gravity math during propelled states. Gravity also = 0 for a brief tunable window during secondary boost recoil. Gravity only applies during unpropelled airborne states (with Celeste-style apex float and fast fall modifiers).
+- **~1 second of fuel** (100 gas, 100/sec drain). Recharges on landing. Fuel parameters are configurable per chapter (shorter duration + mid-air pickups as a difficulty lever).
 - **Mode-specific halving on release/empty** (matches Cave Story exactly): horizontal boost → halve X velocity only. Upward boost → halve Y velocity only. Downward boost → NO halving.
 - **Wall nudge**: during horizontal boost, hitting a wall sets a small upward velocity (`wallNudgeSpeed`), allowing wall climbing — matches Booster 2.0's `ym = -0x100` on wall contact.
 - **Boost modes** tracked via `boostMode`: 0=off, 1=horizontal, 2=up, 3=down.
@@ -37,7 +37,9 @@ This project is built step-by-step, collaboratively. Each change should be small
 - Fires a projectile (if prefab assigned) and applies recoil in the opposite direction.
 - 3 ammo, recharges on ground, short cooldown between shots.
 - Uses same input loading pattern as PlayerController (Resources.Load + manual edge detection).
-- Currently a prototype — design not finalized.
+- **Swappable mode system (planned):** SecondaryBooster becomes a host delegating to `IBoosterMode` implementations. Default is `RecoilBooster` (current behavior). `GunBooster` fires aimed projectiles at switch targets. Each mode defines its own recoil, ammo rules, and feedback.
+- **Mode swapping is flexible:** Can happen at chapter-level (via ChapterConfig), room-level (on room entry), or mid-room (via BoosterSwapZone gimmick or pickup). Swaps can be permanent or temporary (reverts when leaving zone).
+- **Wavedash / momentum tech (planned):** Diagonal-downward recoil near ground converts into horizontal ground speed. Landing from jetpack boost at an angle preserves momentum. Enables Celeste/Melee-style speed tech for skilled players.
 
 ### Camera (RoomCamera.cs)
 - **Currently**: simple follow camera for movement testing (orthographic size 8.5).
@@ -117,17 +119,35 @@ The game uses **diegetic feedback** instead of HUD bars — the player reads fue
 | wallCheckDistance | 0.6 | Raycast distance for wall detection during boost |
 | Project gravity | -20 | In Physics2D settings |
 
+## Planned Architecture (see `docs/superpowers/specs/2026-04-07-granular-development-plan-design.md`)
+
+The project is being developed via two parallel tracks:
+- **Track A (Feel):** Refactor PlayerController into focused components, build runtime tuning panel, nail movement feel, add momentum/wavedash system. Owns `Player/`, `UI/`.
+- **Track B (Infrastructure):** Room-snapping camera, gimmick framework, event bus, chapter configuration. Owns `Level/`, `Camera/`, `Gimmicks/`, `Core/`.
+
+Key planned systems:
+- `PlayerTuning.cs` — ScriptableObject centralizing ALL tuning values (replaces scattered inspector fields)
+- `GravityHandler.cs` — Priority-based override system (jetpack/boost request gravity=0, gimmicks can override)
+- `GameEventBus.cs` — Central pub/sub decoupling gimmicks from player/camera/UI systems
+- `ChapterConfig.cs` — Per-chapter rules (default booster mode, fuel limits, gimmick palette)
+- `BoosterSwapZone.cs` — Mid-room booster mode changes (temporary or permanent)
+
+Gimmick ideas: wind turbines (on/off intervals), gravity switches, closing platforms, fuel pickups, shootable switch targets, blind zones.
+
 ## Current State
 Movement prototype with Celeste-style ground controls and Booster 2.0-style jetpack. Currently playtesting movement feel in a runtime-generated test level. Jump, walk, jetpack, and secondary booster all functional.
 
 ## What's NOT Done Yet
-- Movement feel is being actively tuned (current session)
+- Movement feel is being actively tuned — gravity axiom (gravity=0 during all propelled states) not yet implemented
+- PlayerController refactor into focused components not yet started
+- Runtime tuning panel not yet built
 - No screen shake or general juice beyond jetpack exhaust feedback
 - No SFX or music beyond jetpack audio feedback (needs actual audio clips assigned)
 - No title screen or persistent HUD (intentional — minimal UI philosophy)
 - No actual level design beyond the test room
-- No death/respawn system
-- No momentum/acceleration tech for speedrunners
+- No death/respawn system (planned: Hazard layer triggers instant respawn to room spawn point)
+- No momentum/acceleration tech for speedrunners (planned: wavedash, momentum conservation)
+- No gimmick framework or event bus yet
 - Sprites are Cave Story placeholders
 - Animator controller not connected (placeholder sprites)
 
@@ -139,19 +159,28 @@ Movement prototype with Celeste-style ground controls and Booster 2.0-style jetp
 ## Long-Term Plan
 
 ### Phase 1 — Core Prototype (IN PROGRESS)
-Jetpack, jump, ground movement, secondary booster, room system, camera, gas pickups, gravity zones, animations, input bindings. **Currently tuning movement feel.**
+**Track A:** Refactor PlayerController → build tuning panel → implement gravity axiom → nail movement feel → wavedash/momentum system → booster mode framework.
+**Track B:** Event bus + Core/ → room-snapping camera + respawn → gimmick framework → chapter configuration.
+Both tracks run in parallel. See `docs/superpowers/specs/2026-04-07-granular-development-plan-design.md` for granular breakdown.
 
 ### Phase 2 — Chapter 1 (Tutorial)
 10-15 rooms teaching mechanics progressively. Room transition effects. Basic SFX. Death particles & screen shake. Title screen.
 
 ### Phase 3 — Chapter 2+ (Gimmick Chapters)
-Each chapter introduces one new gimmick. 15-20 rooms per chapter.
+Each chapter introduces one new gimmick (wind turbines, gravity switches, closing platforms, gun mode puzzles, blind zones, etc.). 15-20 rooms per chapter. Booster mode can change mid-chapter or mid-room via BoosterSwapZone.
 
 ### Phase 4 — Speedrun & Mastery Layer
-Momentum preservation tech. Jetpack cancel techniques. Hidden skips. In-game timer.
+Momentum preservation tech. Wavedash chains. Jetpack cancel techniques. Hidden skips. In-game timer.
 
 ### Phase 5 — Polish & Original Art
 Replace all Cave Story sprites. Original character, tilesets, effects. Soundtrack.
 
 ### Phase 6 — Release
 4-5 chapters (60-80 rooms). B-side hard mode. Settings menu.
+
+## Multi-Session Protocol
+When running parallel Claude Code sessions, follow the file ownership rules in the design spec:
+- **Track A sessions** only touch: `Assets/Scripts/Player/`, `Assets/Scripts/UI/`
+- **Track B sessions** only touch: `Assets/Scripts/Level/`, `Assets/Scripts/Camera/`, `Assets/Scripts/Gimmicks/`, `Assets/Scripts/Core/`
+- Commit to named branches: `track-a/<description>` or `track-b/<description>`
+- Player-affecting actions from Track B go through GameEventBus, never direct calls

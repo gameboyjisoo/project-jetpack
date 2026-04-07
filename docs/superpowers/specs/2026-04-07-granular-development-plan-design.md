@@ -116,7 +116,11 @@ Each mode declares:
 - Its own ammo rules (count, recharge behavior)
 - Visual/audio feedback hooks
 
-Mode swapping triggered by `BoosterModeType` enum (defined in `Core/`).
+Mode swapping triggered by `BoosterModeType` enum (defined in `Core/`). Swaps can be triggered at any granularity:
+- **Chapter-level:** `ChapterConfig` sets the default mode for the chapter
+- **Room-level:** A room can override the chapter default on entry (e.g., gun rooms in an otherwise recoil chapter)
+- **Mid-room:** A `BoosterSwapZone` gimmick or pickup can change the mode on the fly (e.g., pick up a gun, lose it after the puzzle)
+- **Revert behavior:** Each swap can specify whether it's permanent (until next swap) or temporary (reverts when leaving a zone or after N uses)
 
 ### A6. Fuel System Extensions
 
@@ -155,6 +159,7 @@ Assets/Scripts/Gimmicks/
   ClosingPlatform.cs    — Platforms open/close on timer, require burst-speed passage
   FuelPickup.cs         — Mid-air collectible, publishes event for fuel + ammo refill
   SwitchTarget.cs       — Shootable target for GunBooster, triggers level events
+  BoosterSwapZone.cs    — Trigger zone that changes active booster mode (temporary or permanent)
 ```
 
 **Gimmick interaction rules:**
@@ -169,12 +174,12 @@ Assets/Scripts/Level/ChapterConfig.cs — ScriptableObject
 ```
 
 Per-chapter rules:
-- Active booster mode (`BoosterModeType` enum from Core/)
+- **Default** booster mode (`BoosterModeType` enum from Core/) — rooms and gimmicks can override this
 - Max fuel override + fuel drain rate
 - Available gimmick palette
 - Music track reference
 
-Applied on chapter load. "Shortened jetpack with mid-air recharges" = `ChapterConfig` with `maxFuel: 40` + `FuelPickup` gimmicks placed in rooms.
+Applied on chapter load as baseline. Individual rooms and gimmick zones can override any chapter-level setting. "Shortened jetpack with mid-air recharges" = `ChapterConfig` with `maxFuel: 40` + `FuelPickup` gimmicks placed in rooms. "Gun puzzle mid-chapter" = a `BoosterSwapZone` placed in specific rooms that swaps to GunBooster on entry and reverts on exit.
 
 ### B4. Event Bus
 
@@ -263,6 +268,7 @@ Assets/Scripts/
     ClosingPlatform.cs
     FuelPickup.cs
     SwitchTarget.cs
+    BoosterSwapZone.cs
   Level/
     Room.cs
     RoomManager.cs

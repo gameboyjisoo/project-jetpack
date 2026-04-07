@@ -27,8 +27,9 @@
 ### How Movement Works
 - **Ground movement** is Celeste-style — near-instant acceleration and deceleration, snappy direction changes. Air control at 65% of ground.
 - **Jump** is Celeste-style variable height — hold jump to maintain upward speed for 0.2 seconds, release to let gravity take over naturally (no instant velocity cut). Adds a small horizontal boost in your input direction. Has coyote time (0.1s) and jump buffering (0.1s). Floats at the apex with half gravity while holding jump.
-- **Jetpack** (Booster 2.0 style): press to activate while airborne, hold to sustain. Boosts in 4 cardinal directions at ~1.9× run speed. Direction = most recently pressed arrow key. Gravity stays active during horizontal boost (you sink slightly) and downward boost (you accelerate). Gravity off during upward boost (maintains speed). ~1 second of fuel, recharges on landing. On release: horizontal boost halves X velocity, upward boost halves Y velocity, downward boost has no halving. Hitting a wall during horizontal boost nudges you upward.
-- **Secondary Booster** fires a projectile and pushes you in the opposite direction (recoil). 3 shots, recharges on ground. For precise micro-adjustments.
+- **Jetpack** (Booster 2.0 style): press to activate while airborne, hold to sustain. Boosts in 4 cardinal directions at ~1.9× run speed. Direction = most recently pressed arrow key. **Gravity is completely disabled during jetpack** — you go exactly where you point, for exactly the distance your fuel allows. No invisible sinking or drift. ~1 second of fuel, recharges on landing. On release: horizontal boost halves X velocity, upward boost halves Y velocity, downward boost has no halving. Hitting a wall during horizontal boost nudges you upward.
+- **Secondary Booster** fires a projectile and pushes you in the opposite direction (recoil). **Gravity is briefly disabled during the recoil burst** so you travel on a clean, predictable vector. 3 shots, recharges on ground. The booster's behavior can change depending on the chapter or room — in some areas it becomes a gun for hitting switches, while in others it stays as the default recoil tool.
+- **Wavedash** (advanced tech): fire the secondary booster diagonally downward near the ground to convert recoil into horizontal ground speed. Chain wavedashes to build momentum beyond normal run speed.
 
 ### Reading Your Fuel (No HUD Bar)
 There is no fuel bar on screen. Instead, the jetpack tells you its state directly:
@@ -41,7 +42,7 @@ There is no fuel bar on screen. Instead, the jetpack tells you its state directl
 
 ## Project Structure
 
-### Scripts
+### Scripts (Current)
 ```
 Assets/Scripts/
   Camera/
@@ -53,13 +54,16 @@ Assets/Scripts/
   Player/
     PlayerController.cs        — Core movement (ground, jump, jetpack)
     JetpackGas.cs              — Gas resource system with events
-    SecondaryBooster.cs        — Recoil weapon / precision movement
+    SecondaryBooster.cs        — Recoil weapon / precision movement (will become swappable mode host)
     PlayerAnimator.cs          — Drives Animator from player state
     JetpackParticles.cs        — Exhaust color shift & sputter (fuel visual cue)
     JetpackAudioFeedback.cs    — Engine pitch decay & sputter SFX (fuel audio cue)
   UI/
     GasMeterUI.cs              — Legacy gas fill bar (not used — minimal UI philosophy)
 ```
+
+### Planned Structure (after refactor)
+See `docs/superpowers/specs/2026-04-07-granular-development-plan-design.md` §6 for the full target file structure. Key additions: `Core/` (event bus, shared types), `Gimmicks/` (environmental effects), `Player/Boosters/` (swappable booster modes), `UI/TuningPanel.cs` (runtime parameter tuning).
 
 ### Other Key Locations
 ```
@@ -107,6 +111,13 @@ ProjectSettings/                           — Physics2D gravity is -20
 - Describe game feel: "landing should feel heavier"
 - Paste Unity console errors directly for debugging
 - Use `/commit` to save your work with a good message
+- Once the tuning panel is built (F1 toggle), use it to live-adjust movement values during Play mode — then tell Claude Code which preset to lock in
+
+### Parallel Sessions
+You can run multiple Claude Code sessions simultaneously on different tracks:
+- **Track A** sessions work on player feel (Player/, UI/ scripts only)
+- **Track B** sessions work on infrastructure (Level/, Camera/, Gimmicks/, Core/ scripts only)
+- Each session commits to its own branch (`track-a/...` or `track-b/...`) — you merge to main yourself
 
 ### When to Use Unity Editor vs Claude Code
 | Task | Use |
