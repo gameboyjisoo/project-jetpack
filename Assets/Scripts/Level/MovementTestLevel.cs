@@ -63,6 +63,20 @@ public class MovementTestLevel : MonoBehaviour
 
         // Orange gate (needs mid fuel) — blocks corridor entrance
         CreateFuelGate("FuelGate_Orange", new Vector2(46, 0), new Vector2(1, 6), FuelTier.Mid);
+
+        // Hazards (spikes along sections of the floor)
+        CreateHazard("Spikes_1", new Vector2(-20, -8.5f), new Vector2(10, 0.5f));
+        CreateHazard("Spikes_2", new Vector2(25, -8.5f), new Vector2(8, 0.5f));
+        CreateHazard("Spikes_3", new Vector2(51, -8.5f), new Vector2(4, 0.5f));
+
+        // Fuel pickups (mid-air, recharge jetpack gas)
+        CreateFuelPickup("FuelPickup_1", new Vector2(-5, 5));
+        CreateFuelPickup("FuelPickup_2", new Vector2(25, 8));
+        CreateFuelPickup("FuelPickup_3", new Vector2(40, 12));
+
+        // Dash pickups (mid-air, recharge dash ammo)
+        CreateDashPickup("DashPickup_1", new Vector2(10, 7));
+        CreateDashPickup("DashPickup_2", new Vector2(35, 5));
     }
 
     private void CreateFuelGate(string name, Vector2 position, Vector2 size, FuelTier tier)
@@ -79,6 +93,60 @@ public class MovementTestLevel : MonoBehaviour
 
         var gate = go.AddComponent<FuelGate>();
         gate.Init(tier);
+    }
+
+    private void CreateHazard(string name, Vector2 position, Vector2 size)
+    {
+        var go = new GameObject(name);
+        go.layer = 10; // Hazard layer
+        go.transform.position = new Vector3(position.x, position.y, 0);
+        go.transform.localScale = new Vector3(size.x, size.y, 1);
+
+        var sr = go.AddComponent<SpriteRenderer>();
+        sr.sprite = CreateSquareSprite();
+        sr.color = new Color(1f, 0.2f, 0.2f, 0.8f); // Red-ish
+        sr.sortingOrder = 1;
+
+        var col = go.AddComponent<BoxCollider2D>();
+        col.isTrigger = true;
+
+        go.AddComponent<Hazard>();
+    }
+
+    private void CreateFuelPickup(string name, Vector2 position)
+    {
+        var go = new GameObject(name);
+        go.layer = 11; // Collectible layer
+        go.transform.position = new Vector3(position.x, position.y, 0);
+        go.transform.localScale = new Vector3(0.8f, 0.8f, 1);
+
+        var sr = go.AddComponent<SpriteRenderer>();
+        sr.sprite = CreateSquareSprite();
+        sr.color = new Color(0f, 0.9f, 1f, 0.9f); // Cyan — matches full fuel color
+        sr.sortingOrder = 2;
+
+        var col = go.AddComponent<BoxCollider2D>();
+        col.isTrigger = true;
+
+        go.AddComponent<GasRechargePickup>();
+    }
+
+    private void CreateDashPickup(string name, Vector2 position)
+    {
+        var go = new GameObject(name);
+        go.layer = 11; // Collectible layer
+        go.transform.position = new Vector3(position.x, position.y, 0);
+        go.transform.localScale = new Vector3(0.8f, 0.8f, 1);
+
+        var sr = go.AddComponent<SpriteRenderer>();
+        sr.sprite = CreateSquareSprite();
+        sr.color = new Color(1f, 0.5f, 1f, 0.9f); // Pink/magenta — distinct from fuel
+        sr.sortingOrder = 2;
+
+        var col = go.AddComponent<BoxCollider2D>();
+        col.isTrigger = true;
+
+        go.AddComponent<DashRechargePickup>();
     }
 
     private void CreatePlatform(string name, Vector2 position, Vector2 size, Color color)
