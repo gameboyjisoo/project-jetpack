@@ -1,9 +1,13 @@
 using UnityEngine;
 using System;
 
+public enum FuelTier { Low, Mid, High }
+
 public class JetpackGas : MonoBehaviour
 {
     [SerializeField] private float maxGas = 100f;
+    [SerializeField] private float midThreshold = 0.5f;
+    [SerializeField] private float lowThreshold = 0.2f;
 
     private float currentGas;
 
@@ -11,6 +15,17 @@ public class JetpackGas : MonoBehaviour
     public float MaxGas => maxGas;
     public float GasPercent => currentGas / maxGas;
     public bool HasGas => currentGas > 0f;
+
+    public FuelTier CurrentTier
+    {
+        get
+        {
+            float pct = GasPercent;
+            if (pct >= midThreshold) return FuelTier.High;
+            if (pct >= lowThreshold) return FuelTier.Mid;
+            return FuelTier.Low;
+        }
+    }
 
     public event Action<float> OnGasChanged;
     public event Action OnGasEmpty;

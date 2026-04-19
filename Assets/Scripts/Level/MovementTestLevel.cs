@@ -53,6 +53,32 @@ public class MovementTestLevel : MonoBehaviour
         CreatePlatform("Corridor_R", new Vector2(54, 5), new Vector2(1, 20), wallColor);
         CreatePlatform("Corridor_Mid", new Vector2(51, 8), new Vector2(4, 1), platformColor);
         CreatePlatform("Corridor_Top", new Vector2(51, 16), new Vector2(4, 1), platformColor);
+
+        // Fuel gates for testing
+        // Red gate (needs low fuel) — blocks path between mid platforms
+        CreateFuelGate("FuelGate_Red", new Vector2(12, 1), new Vector2(1, 4), FuelTier.Low);
+
+        // Cyan gate (needs high fuel) — blocks access to high platform area
+        CreateFuelGate("FuelGate_Cyan", new Vector2(-5, 8), new Vector2(1, 4), FuelTier.High);
+
+        // Orange gate (needs mid fuel) — blocks corridor entrance
+        CreateFuelGate("FuelGate_Orange", new Vector2(46, 0), new Vector2(1, 6), FuelTier.Mid);
+    }
+
+    private void CreateFuelGate(string name, Vector2 position, Vector2 size, FuelTier tier)
+    {
+        var go = new GameObject(name);
+        go.transform.position = new Vector3(position.x, position.y, 0);
+        go.transform.localScale = new Vector3(size.x, size.y, 1);
+
+        var sr = go.AddComponent<SpriteRenderer>();
+        sr.sprite = CreateSquareSprite();
+        sr.sortingOrder = 1;
+
+        var col = go.AddComponent<BoxCollider2D>();
+
+        var gate = go.AddComponent<FuelGate>();
+        gate.Init(tier);
     }
 
     private void CreatePlatform(string name, Vector2 position, Vector2 size, Color color)
