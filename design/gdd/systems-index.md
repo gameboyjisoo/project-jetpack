@@ -138,19 +138,20 @@ Project Jetpack is a fast-paced 2D pixel art platformer inspired by Cave Story's
 | Metric | Count |
 |--------|-------|
 | Total systems identified | 18 |
-| Design docs started | 5 (pending creation) |
+| Design docs created | 5 |
 | Design docs reviewed | 0 |
 | Design docs approved | 0 |
-| MVP systems designed | 0/8 |
-| Vertical Slice systems designed | 0/8 |
+| MVP systems with GDDs | 5/8 (Movement, Jump, Jetpack, Secondary Booster, Fuel Feedback) |
+| Vertical Slice systems with GDDs | 0/8 |
 
 ---
 
 ## Next Steps
 
-- [ ] Create 5 core GDDs (Movement, Jump, Jetpack, Secondary Booster, Fuel Feedback)
+- [x] Create 5 core GDDs (Movement, Jump, Jetpack, Secondary Booster, Fuel Feedback)
+- [x] Pass Technical Setup gate (2026-04-19)
 - [ ] Review and approve this systems enumeration
-- [ ] Design MVP-tier systems first (use `/design-system [system-name]`)
 - [ ] Run `/design-review` on each completed GDD
-- [ ] Run `/gate-check technical-setup` when MVP systems are designed
+- [ ] Create remaining MVP GDDs (Gravity System, Animation, Camera)
 - [ ] Prototype the gimmick framework early (`/prototype gimmick-framework`)
+- [ ] Create Event Bus ADR (most urgent architecture gap)

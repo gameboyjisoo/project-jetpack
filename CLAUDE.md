@@ -134,34 +134,67 @@ Key planned systems:
 
 Gimmick ideas: wind turbines (on/off intervals), gravity switches, closing platforms, fuel pickups, shootable switch targets, blind zones.
 
-## Current State
-Movement prototype with Celeste-style ground controls and Booster 2.0-style jetpack. Currently playtesting movement feel in a runtime-generated test level. Jump, walk, jetpack, and secondary booster all functional.
+## Claude Code Game Studios Framework (installed 2026-04-19)
+The project uses the Claude Code Game Studios framework with 49 specialized agents, 72 skills, 12 hooks, and 11 coding standards. Key locations:
+- **GDDs**: `design/gdd/` — 5 core GDDs (player-movement, player-jump, jetpack-system, secondary-booster, fuel-feedback) + game-concept + systems-index (18 systems)
+- **ADRs**: `docs/architecture/` — 7 ADRs covering all Foundation/Core decisions
+- **Master architecture**: `docs/architecture/architecture.md` (645 lines, consolidates all ADRs)
+- **Control manifest**: `docs/architecture/control-manifest.md` — programmer rules per layer
+- **Traceability**: `docs/architecture/architecture-traceability.md` — 17 requirements mapped
+- **Art bible**: `design/art/art-bible.md` — pixel art standards (placeholder art, original in Phase 5)
+- **Accessibility**: `design/accessibility-requirements.md` — Basic tier
+- **UX patterns**: `design/ux/interaction-patterns.md` — 5 core interaction patterns
+- **Adoption plan**: `docs/adoption-plan-2026-04-19.md` — migration checklist with status
+- **Production**: `production/stage.txt` = Pre-Production, `production/review-mode.txt` = lean
+- **Tests**: `Assets/Tests/EditMode/` (4 example tests), `Assets/Tests/PlayMode/`, CI/CD at `.github/workflows/tests.yml`
+
+## Design Targets
+- **Jump, ground movement, secondary boost**: Must feel **exactly like Celeste** — not "inspired by", but matching Celeste's feel precisely.
+- **Jetpack**: Cave Story's Booster 2.0 — the one system that draws from Cave Story, not Celeste.
+- **Fuel feedback**: Diegetic only (particles + audio). No persistent HUD bar.
+
+## Current State (updated 2026-04-19)
+**Project phase: Pre-Production** (passed Technical Setup gate 2026-04-19).
+
+Movement prototype with Celeste-style ground controls, Booster 2.0-style jetpack, and 8-direction secondary dash. **PlayerController refactored** into 6 focused components (2026-04-14). **Gravity axiom implemented** (gravity=0 during all propelled states). Diegetic fuel feedback working (exhaust particles + audio pitch decay). Currently playtesting movement feel in a runtime-generated test level. All MVP core systems functional.
+
+Architecture fully documented: 5 GDDs, 7 ADRs, master architecture doc, traceability matrix. Gate check passed with CONCERNS (non-blocking: dependency chain inconsistency across docs, Resources.Load deprecation awareness, 11/18 systems still need ADRs).
 
 ## What's NOT Done Yet
-- Movement feel is being actively tuned — gravity axiom (gravity=0 during all propelled states) not yet implemented
-- PlayerController refactor into focused components not yet started
-- Runtime tuning panel not yet built
+- Movement feel tuning ongoing (secondary boost distance/speed may need adjustment to match Celeste dash exactly)
+- Runtime tuning panel not yet built (PlayerTuning ScriptableObject)
 - No screen shake or general juice beyond jetpack exhaust feedback
-- No SFX or music beyond jetpack audio feedback (needs actual audio clips assigned)
+- No SFX or music beyond jetpack audio feedback
 - No title screen or persistent HUD (intentional — minimal UI philosophy)
 - No actual level design beyond the test room
-- No death/respawn system (planned: Hazard layer triggers instant respawn to room spawn point)
+- Death/respawn system exists (PlayerRespawn.cs) but not fully integrated with hazards
 - No momentum/acceleration tech for speedrunners (planned: wavedash, momentum conservation)
-- No gimmick framework or event bus yet
-- Sprites are Cave Story placeholders
+- No gimmick framework or event bus yet (Event Bus ADR is most urgent gap)
+- Sprites are Cave Story placeholders (original art Phase 5)
 - Animator controller not connected (placeholder sprites)
+- tr-registry.yaml needs entries populated from GDDs
+- sprint-status.yaml not yet created
+- No stories created yet (use `/create-stories` from GDDs)
 
 ## Known Issues
-- Scene file `groundLayer` mask doesn't persist — relied on code fallback
-- Old scene platforms (Ground, Platform_Left/Right/Top) still exist but are disabled at runtime by MovementTestLevel
+- Scene file `groundLayer` mask doesn't persist — code fallback forces layer 8 in Awake()
+- Old scene platforms (Ground, Platform_Left/Right/Top) still exist but disabled at runtime by MovementTestLevel
 - Animator throws warning if no controller assigned (handled with null check)
+- After refactor: verify new components are on Player GameObject in Inspector (RequireComponent should auto-add)
+- Architecture review flagged: dependency chain described differently across master doc, traceability matrix, and individual ADRs — needs reconciliation
+
+## Next Steps
+1. **Start Pre-Production work**: prototype Vertical Slice (Chapter 1 tutorial rooms)
+2. **Event Bus ADR** — most urgent architecture gap, blocks Track B work
+3. **Continue movement feel tuning** — Celeste-exact target for jump/movement/dash
+4. **Sprint plan** — use `/sprint-plan` to create first sprint structure
+5. **Create stories** — use `/create-stories` to generate from GDDs
 
 ## Long-Term Plan
 
-### Phase 1 — Core Prototype (IN PROGRESS)
-**Track A:** Refactor PlayerController → build tuning panel → implement gravity axiom → nail movement feel → wavedash/momentum system → booster mode framework.
+### Phase 1 — Core Prototype (COMPLETE)
+**Track A:** ~~Refactor PlayerController~~ ✓ → ~~implement gravity axiom~~ ✓ → continue movement feel tuning → build tuning panel → wavedash/momentum system → booster mode framework.
 **Track B:** Event bus + Core/ → room-snapping camera + respawn → gimmick framework → chapter configuration.
-Both tracks run in parallel. See `docs/superpowers/specs/2026-04-07-granular-development-plan-design.md` for granular breakdown.
 
 ### Phase 2 — Chapter 1 (Tutorial)
 10-15 rooms teaching mechanics progressively. Room transition effects. Basic SFX. Death particles & screen shake. Title screen.
