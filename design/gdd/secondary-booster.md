@@ -5,7 +5,7 @@
 > **Priority**: MVP
 > **Source File**: `Assets/Scripts/Player/SecondaryBooster.cs`
 > **Created**: 2026-04-19
-> **Last Updated**: 2026-04-19
+> **Last Updated**: 2026-04-20
 
 ---
 
@@ -253,12 +253,16 @@ Mode swapping can occur at:
 - **Room level** on room entry.
 - **Mid-room** via `BoosterSwapZone` gimmick or pickup (permanent or temporary).
 
-### Wavedash / Momentum Tech (Priority: Full Vision)
+### Wavedash / Momentum Tech (IMPLEMENTED — 2026-04-20)
 
-A diagonal-downward dash performed near the ground converts into horizontal ground speed instead of stopping dead. Landing from a jetpack boost at a steep angle preserves a portion of momentum. This enables Celeste/Melee-style speed tech for skilled players without affecting normal play.
+Diagonal-down dash in air + ground contact = horizontal speed conversion. This is NOT just speedrun tech — it's core to the fuel economy. Wavedash is the **fuel-free movement option** that gives skilled players more fuel headroom for fuel-gated sections.
 
-Implementation considerations:
-- Detect "near ground" via a short raycast during diagonal-down dash.
-- Convert remaining dash velocity into horizontal `rb.linearVelocity.x` on ground contact.
-- Preserve factor is a tuning knob (e.g., 0.7 = 70% of dash speed becomes ground speed).
-- Must not interfere with normal ground movement for players who do not use the tech.
+**Current implementation:**
+- Triggers when: airborne dash + downward component + horizontal component + hits ground
+- Speed: `boostSpeed * wavedashSpeedMultiplier` (32 × 1.2 = 38.4 units/sec) — faster than normal dash
+- Speed maintained for `wavedashKeepTime` (0.12s) — jump window to carry speed into air
+- Only triggers from airborne dashes (ground dashes are normal, prevents spam)
+- PlayerMovement skips tick during wavedash window (prevents deceleration fighting)
+- Does NOT consume jetpack fuel — only costs the 1 dash ammo charge
+
+**Design role:** Skilled players wavedash through sections that beginners would jetpack through. This means skilled players arrive at fuel forks with MORE fuel, unlocking different routes. The fuel management pillar requires wavedash to create meaningful route choices.

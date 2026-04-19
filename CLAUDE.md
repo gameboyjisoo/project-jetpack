@@ -217,11 +217,10 @@ Architecture fully documented: 5 GDDs, 7 ADRs, master architecture doc, traceabi
 - **Wavedash**: Diagonal-down dash near ground converts to horizontal speed (1.2× dash speed = 38.4). Speed maintained for 0.12s (jump window). Only triggers from airborne dashes (ground dashes are normal). PlayerMovement skips tick during wavedash window.
 
 ## Next Steps
-1. **Prototype Vertical Slice** — Chapter 1 tutorial rooms (15 rooms). Pattern A (drain to enter) + B (conserve to enter) + C (fuel fork) + E (gun mid-flight). See `design/gdd/design-direction.md`.
-2. **Implement fuel-state gates** — Barriers that read player fuel tier (High/Mid/Low). Color-matched to exhaust gradient (cyan/orange/red).
-3. **Implement gun mode** — Secondary mode swap. Free to use, ranged interaction, no repositioning.
+1. **Implement gun mode** — Secondary mode swap. Free to use (no ammo/fuel cost), ranged interaction, no repositioning. Aim + shoot mid-flight is the skill challenge.
+2. **Room-snapping camera + room transitions** — Required before building real rooms.
+3. **Design and build Chapter 1 tutorial rooms** (15 rooms, patterns A/B/C/E). See `design/gdd/design-direction.md`.
 4. **Sprint plan** — structure Vertical Slice work into sprints
-4. **Sprint plan** — use `/sprint-plan` to create first sprint structure
 5. **Create stories** — use `/create-stories` to generate from GDDs
 
 ## Long-Term Plan

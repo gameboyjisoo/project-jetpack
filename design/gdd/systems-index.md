@@ -27,11 +27,12 @@ Project Jetpack is a fast-paced 2D pixel art platformer inspired by Cave Story's
 | 8 | Camera System | Core | MVP | In Progress | — | Player Controller, Room System |
 | 9 | Room System | Core | Vertical Slice | In Progress | — | Camera System |
 | 10 | Respawn System | Core | Vertical Slice | In Progress | — | Room System, Hazard System |
-| 11 | Event Bus | Core | Vertical Slice | Not Started | — | None |
-| 12 | Gimmick Framework | Gameplay | Vertical Slice | Not Started | — | Event Bus, Chapter Config |
-| 13 | Chapter Configuration | Gameplay | Vertical Slice | Not Started | — | Room System, Gimmick Framework |
-| 14 | Booster Mode Swapping | Gameplay | Alpha | Not Started | — | Secondary Booster, Chapter Config |
-| 15 | Momentum / Wavedash | Gameplay | Full Vision | Not Started | — | Player Movement, Secondary Booster |
+| 11 | Event Bus | Core | Vertical Slice | Implemented | docs/architecture/adr-0008-event-bus.md | None |
+| 12 | Fuel-State Gates | Gameplay | Vertical Slice | Implemented | design/gdd/design-direction.md | Fuel System, Event Bus |
+| 13 | Gimmick Framework | Gameplay | Vertical Slice | In Progress | — | Event Bus, Chapter Config |
+| 14 | Chapter Configuration | Gameplay | Vertical Slice | Not Started | — | Room System, Gimmick Framework |
+| 15 | Booster Mode Swapping (Gun) | Gameplay | Vertical Slice | Not Started | — | Secondary Booster, Chapter Config |
+| 16 | Momentum / Wavedash | Gameplay | MVP | Implemented | design/gdd/secondary-booster.md | Player Movement, Secondary Booster |
 | 16 | Runtime Tuning Panel | Meta | Vertical Slice | Not Started | — | All player systems |
 | 17 | Audio System | Audio | Vertical Slice | In Progress | — | None |
 | 18 | Hazard System | Gameplay | Vertical Slice | In Progress | — | Physics2D, Respawn System |
@@ -137,12 +138,12 @@ Project Jetpack is a fast-paced 2D pixel art platformer inspired by Cave Story's
 
 | Metric | Count |
 |--------|-------|
-| Total systems identified | 18 |
-| Design docs created | 5 |
+| Total systems identified | 19 (added Fuel-State Gates) |
+| Design docs created | 6 (+ design-direction.md) |
 | Design docs reviewed | 0 |
 | Design docs approved | 0 |
 | MVP systems with GDDs | 5/8 (Movement, Jump, Jetpack, Secondary Booster, Fuel Feedback) |
-| Vertical Slice systems with GDDs | 0/8 |
+| Vertical Slice systems implemented | 3 (Event Bus, Fuel-State Gates, Wavedash) |
 
 ---
 
@@ -150,8 +151,11 @@ Project Jetpack is a fast-paced 2D pixel art platformer inspired by Cave Story's
 
 - [x] Create 5 core GDDs (Movement, Jump, Jetpack, Secondary Booster, Fuel Feedback)
 - [x] Pass Technical Setup gate (2026-04-19)
+- [x] Create Event Bus (ADR-0008, implemented with 9 publishes)
+- [x] Define design identity — two pillars: maneuvering + fuel timing (design-direction.md)
+- [x] Implement fuel-state gates (FuelGate.cs, three tiers matching exhaust colors)
+- [x] Implement wavedash (promoted from Full Vision to MVP — core to fuel economy)
+- [ ] Implement gun mode (secondary swap — free ranged interaction)
+- [ ] Room-snapping camera + room transitions
+- [ ] Design and build Chapter 1 tutorial rooms (15 rooms, patterns A/B/C/E)
 - [ ] Review and approve this systems enumeration
-- [ ] Run `/design-review` on each completed GDD
-- [ ] Create remaining MVP GDDs (Gravity System, Animation, Camera)
-- [ ] Prototype the gimmick framework early (`/prototype gimmick-framework`)
-- [ ] Create Event Bus ADR (most urgent architecture gap)

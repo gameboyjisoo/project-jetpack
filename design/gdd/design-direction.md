@@ -122,12 +122,61 @@ Each chapter introduces ONE new fuel-state gimmick type. The maneuvering difficu
 
 ---
 
+## Fuel Tier System (Decided 2026-04-20)
+
+Three tiers matching the exhaust particle gradient. Gates use the same color language.
+
+| Tier | Fuel Range | Exhaust Color | Gate Color | Thresholds |
+|------|-----------|---------------|------------|------------|
+| **High** | 50-100% | Cyan | Cyan glow | `midThreshold = 0.5` |
+| **Mid** | 20-50% | Orange | Orange glow | `lowThreshold = 0.2` |
+| **Low** | 0-20% | Red + sputter | Red glow | |
+
+**Implementation**: `FuelTier` enum in JetpackGas.cs. `FuelGate.cs` in Assets/Scripts/Gimmicks/. Gates open/close in real-time as fuel changes. Color-matched visual feedback. Event Bus integration.
+
+## Wavedash (Implemented 2026-04-20)
+
+Diagonal-down dash near ground → horizontal speed conversion. **Does not consume jetpack fuel** — only costs the 1 dash ammo charge. This is the fuel-free movement option that creates the skill/fuel management headroom.
+
+- Speed: 1.2× dash speed (38.4 units/sec)
+- Speed maintained for 0.12s (jump window to carry into air)
+- Only triggers from airborne dashes (ground dashes are normal)
+- Skilled players use wavedash to conserve jetpack fuel for fuel-gated sections
+
+## Gun Mode Clarification (2026-04-20)
+
+The gun challenge is NOT "shoot instead of fly." It's: **aim and fire accurately WHILE managing jetpack trajectory mid-flight.** Example: jetpacking right, but must shoot a switch above you at the right moment. Three simultaneous challenges: maneuvering + fuel timing + aim precision.
+
+## Room Design Patterns (Decided 2026-04-20)
+
+Vertical Slice uses patterns A + B + C + E:
+
+| Pattern | Name | Description | Teaches |
+|---------|------|-------------|---------|
+| A | Drain to Enter | Red gate blocks path. Jetpack around to drain fuel below 20%. | Fuel gates exist |
+| B | Conserve to Enter | Cyan gate at end of hazard gauntlet. Use too much fuel dodging = locked out. | Fuel efficiency matters |
+| C | Fuel Fork | Path splits into cyan route (high fuel, easier) and red route (low fuel, harder). | Fuel state affects your path |
+| E | Gun Mid-Flight | Shoot switches while jetpacking. Aim precision under flight pressure. | Secondary mode skill |
+
+### Tutorial Chapter Layout (Vertical Slice)
+1. **Rooms 1-3**: Walk, jump basics (pure Celeste)
+2. **Rooms 4-6**: Jetpack introduction (4 directions, fuel management)
+3. **Rooms 7-8**: Dash introduction (precision repositioning)
+4. **Rooms 9-10**: Pattern A — first fuel-state gate (drain to open)
+5. **Rooms 11-12**: Pattern B — conserve fuel through hazards
+6. **Room 13**: Pattern C — fuel fork (two paths based on fuel state)
+7. **Room 14**: Gun introduction + Pattern E (shoot mid-flight)
+8. **Room 15**: Finale combining all patterns
+
 ## Open Questions
 
 | Question | Status |
 |----------|--------|
-| How many fuel-threshold levels should the game distinguish? (e.g., full/half/empty vs. continuous percentage) | Open |
-| Should fuel-state gates show their threshold visually? (e.g., a door with a color matching the particle gradient) | Open |
+| How many fuel-threshold levels should the game distinguish? | Decided: Three tiers (High/Mid/Low) matching exhaust colors |
+| Should fuel-state gates show their threshold visually? | Decided: Color-matched to exhaust gradient + particles when resonating |
 | Can the player see their exact fuel percentage, or only read it from diegetic cues? | Decided: diegetic only, no HUD |
 | Should gun mode have limited ammo or be truly free? | Decided: free to use, no ammo cost |
-| How does wavedash interact with fuel? (drain fuel? free?) | Open |
+| How does wavedash interact with fuel? | Decided: does NOT consume jetpack fuel, only costs 1 dash ammo |
+| Should wavedash chain into jump (hyper dash)? | Partially implemented: speed maintained for 0.12s jump window. Full chain tech deferred. |
+| What audio/visual cues should gates emit when they match the player's fuel state? | Open |
+| Should fuel-drain zones exist (areas that consume fuel faster)? | Open — fits the design but not yet implemented |

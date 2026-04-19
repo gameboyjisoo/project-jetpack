@@ -4,8 +4,10 @@
 > **Layer**: Presentation
 > **Priority**: MVP
 > **Created**: 2026-04-19
-> **Last Updated**: 2026-04-19
-> **Source Files**: `JetpackParticles.cs`, `JetpackAudioFeedback.cs`, `JetpackGas.cs`
+> **Last Updated**: 2026-04-20
+> **Source Files**: `JetpackParticles.cs`, `JetpackAudioFeedback.cs`, `JetpackGas.cs`, `FuelGate.cs`
+
+> **IMPORTANT UPDATE (2026-04-20)**: The fuel feedback system now serves a dual purpose. It communicates fuel state to the PLAYER (diegetic particles + audio), AND the same color language is used by FUEL GATES in the environment. Three fuel tiers (High=cyan 50-100%, Mid=orange 20-50%, Low=red 0-20%) are defined as a `FuelTier` enum in JetpackGas.cs. Gates color-match to the exhaust gradient — when the player's exhaust matches the gate's color, the gate opens. See `design/gdd/design-direction.md` for full design context.
 
 ---
 
