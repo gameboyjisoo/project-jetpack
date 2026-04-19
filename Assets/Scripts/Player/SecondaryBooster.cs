@@ -1,14 +1,19 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+public enum SecondaryMode { Dash, Gun }
+
 /// <summary>
-/// Secondary Booster: short fixed-distance dash in 8 directions.
-/// Limited ammo, recharges on ground. Faster than jetpack but brief.
+/// Secondary Booster: swappable mode — Dash (limited ammo, repositioning)
+/// or Gun (free projectile, no movement effect).
 /// </summary>
 [RequireComponent(typeof(PlayerController))]
 public class SecondaryBooster : MonoBehaviour
 {
-    [Header("Booster")]
+    [Header("Mode")]
+    [SerializeField] private SecondaryMode currentMode = SecondaryMode.Dash;
+
+    [Header("Dash")]
     [SerializeField] private int maxAmmo = 1;
     [SerializeField] private float boostSpeed = 32f;
     [SerializeField] private float boostDuration = 0.15f;
@@ -20,10 +25,11 @@ public class SecondaryBooster : MonoBehaviour
     [SerializeField] private float wavedashSpeedMultiplier = 1.2f;
     [SerializeField] private float wavedashKeepTime = 0.12f;
 
-    [Header("Projectile (optional)")]
-    [SerializeField] private GameObject projectilePrefab;
+    [Header("Gun")]
+    [SerializeField] private float gunCooldown = 0.2f;
     [SerializeField] private float projectileSpeed = 20f;
-    [SerializeField] private float projectileLifetime = 0.5f;
+    [SerializeField] private float projectileLifetime = 1.0f;
+    [SerializeField] private Sprite projectileSprite;
 
     [Header("Input")]
     [SerializeField] private InputActionAsset inputActions;
@@ -50,6 +56,7 @@ public class SecondaryBooster : MonoBehaviour
     private float wavedashTimer;
     private float wavedashSpeed;
 
+    public SecondaryMode CurrentMode => currentMode;
     public int CurrentAmmo => currentAmmo;
     public int MaxAmmo => maxAmmo;
     public bool IsBoosting => boostTimer > 0f || decayTimer > 0f;
@@ -63,6 +70,23 @@ public class SecondaryBooster : MonoBehaviour
     {
         currentAmmo = Mathf.Min(currentAmmo + amount, maxAmmo);
         OnAmmoChanged?.Invoke(currentAmmo);
+    }
+
+    /// <summary>
+    /// Swap secondary mode (called by gimmicks, pickups, etc.).
+    /// </summary>
+    public void SwapMode(SecondaryMode mode)
+    {
+        if (mode == currentMode) return;
+
+        string oldName = currentMode.ToString().ToLower();
+        currentMode = mode;
+        string newName = currentMode.ToString().ToLower();
+
+        GameEventBus.Publish(new SecondaryModeChanged {
+            OldMode = oldName,
+            NewMode = newName
+        });
     }
 
     private void Awake()
@@ -109,8 +133,8 @@ public class SecondaryBooster : MonoBehaviour
 
         cooldownTimer -= Time.deltaTime;
 
-        // Recharge ammo on ground
-        if (player.IsGrounded && currentAmmo < maxAmmo)
+        // Recharge ammo on ground (dash mode only)
+        if (currentMode == SecondaryMode.Dash && player.IsGrounded && currentAmmo < maxAmmo)
         {
             currentAmmo = maxAmmo;
             OnAmmoChanged?.Invoke(currentAmmo);
@@ -144,7 +168,11 @@ public class SecondaryBooster : MonoBehaviour
 
             dashBufferTimer -= Time.deltaTime;
 
-            if (dashBufferTimer > 0f && cooldownTimer <= 0f && currentAmmo > 0 && !IsBoosting)
+            bool canFire = cooldownTimer <= 0f;
+            if (currentMode == SecondaryMode.Dash)
+                canFire = canFire && currentAmmo > 0 && !IsBoosting;
+
+            if (dashBufferTimer > 0f && canFire)
             {
                 dashBufferTimer = 0f;
                 Fire();
@@ -206,6 +234,14 @@ public class SecondaryBooster : MonoBehaviour
 
     private void Fire()
     {
+        if (currentMode == SecondaryMode.Dash)
+            FireDash();
+        else
+            FireGun();
+    }
+
+    private void FireDash()
+    {
         wasAirborneAtDashStart = !player.IsGrounded;
         currentAmmo--;
         cooldownTimer = cooldown;
@@ -232,16 +268,64 @@ public class SecondaryBooster : MonoBehaviour
             freezeActive = true;
             freezeTimer = freezeFrameDuration;
         }
+    }
 
-        if (projectilePrefab != null)
-        {
-            var proj = Instantiate(projectilePrefab, transform.position, Quaternion.identity);
-            var projRb = proj.GetComponent<Rigidbody2D>();
-            if (projRb != null)
-            {
-                projRb.linearVelocity = -aimDirection * projectileSpeed;
-            }
-            Destroy(proj, projectileLifetime);
-        }
+    private void FireGun()
+    {
+        cooldownTimer = gunCooldown;
+
+        // No ammo cost, no movement effect, no freeze frame
+        GameEventBus.Publish(new SecondaryUsed {
+            Direction = aimDirection,
+            ModeName = "gun"
+        });
+
+        SpawnProjectile(aimDirection);
+    }
+
+    private void SpawnProjectile(Vector2 direction)
+    {
+        var go = new GameObject("Projectile");
+        go.transform.position = (Vector2)transform.position + direction * 0.5f;
+        go.transform.localScale = new Vector3(0.3f, 0.3f, 1f);
+
+        // Sprite
+        var sr = go.AddComponent<SpriteRenderer>();
+        if (projectileSprite != null)
+            sr.sprite = projectileSprite;
+        else
+            sr.sprite = CreateFallbackSprite();
+        sr.color = new Color(1f, 0.95f, 0.6f); // warm yellow-white
+        sr.sortingOrder = 10;
+
+        // Physics
+        var projRb = go.AddComponent<Rigidbody2D>();
+        projRb.gravityScale = 0f;
+        projRb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+        projRb.linearVelocity = direction * projectileSpeed;
+
+        // Collider (trigger for ground detection)
+        var col = go.AddComponent<CircleCollider2D>();
+        col.radius = 0.15f;
+        col.isTrigger = true;
+
+        // Projectile behaviour
+        var proj = go.AddComponent<Projectile>();
+        proj.Init(projectileLifetime);
+    }
+
+    private static Sprite fallbackSprite;
+
+    private static Sprite CreateFallbackSprite()
+    {
+        if (fallbackSprite != null) return fallbackSprite;
+        var tex = new Texture2D(4, 4);
+        var pixels = new Color[16];
+        for (int i = 0; i < 16; i++) pixels[i] = Color.white;
+        tex.SetPixels(pixels);
+        tex.Apply();
+        tex.filterMode = FilterMode.Point;
+        fallbackSprite = Sprite.Create(tex, new Rect(0, 0, 4, 4), new Vector2(0.5f, 0.5f), 4);
+        return fallbackSprite;
     }
 }

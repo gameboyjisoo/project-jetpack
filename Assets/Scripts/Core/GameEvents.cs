@@ -64,18 +64,18 @@ public struct SecondaryModeChanged
 public struct RoomEntered
 {
     public Vector2 SpawnPoint;
-    public int RoomId;
+    public string RoomId;
 }
 
 public struct RoomTransitionStarted
 {
-    public int FromRoomId;
-    public int ToRoomId;
+    public string FromRoomId;
+    public string ToRoomId;
 }
 
 public struct RoomTransitionCompleted
 {
-    public int RoomId;
+    public string RoomId;
 }
 
 public struct GravityZoneEntered
@@ -112,5 +112,5 @@ public struct ChapterStarted
 public struct CheckpointReached
 {
     public Vector2 Position;
-    public int RoomId;
+    public string RoomId;
 }
