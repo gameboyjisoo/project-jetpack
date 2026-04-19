@@ -177,7 +177,9 @@ The game is NOT "Celeste with a jetpack." It's built on **two pillars**:
 
 The fusion: maneuvering IS fuel spending. Navigating a corridor drains fuel at a rate determined by your skill. The level asks: can you arrive at the fuel gate with the right amount remaining?
 
-**Secondary mode swap**: Dash (costs 1 ammo charge, burst repositioning) vs. Gun (free to use, ranged interaction, no repositioning). Swapping is a fuel management decision — gun lets you hit distant switches without spending fuel to fly there.
+**Wavedash is the key enabler**: Skilled players use wavedash (fuel-free horizontal movement) to conserve jetpack fuel, arriving at fuel forks with more options. Without wavedash, the 1-second jetpack is too short for meaningful fuel management choices.
+
+**Secondary mode swap**: Dash (costs 1 ammo charge, burst repositioning) vs. Gun (free to use, ranged interaction, no repositioning). Gun does NOT consume fuel or ammo. Swapping is a fuel management decision — gun lets you hit distant switches without spending fuel to fly there. The gun challenge is aiming accurately WHILE mid-flight, not "shoot instead of fly."
 
 **Design targets**:
 - **Jetpack**: Cave Story's Booster 2.0 — sustained directional thrust, the primary traversal tool.

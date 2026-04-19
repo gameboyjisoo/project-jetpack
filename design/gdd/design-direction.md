@@ -50,6 +50,8 @@ The jetpack gives **sustained, directed flight** for up to a full second. The fu
 ### The Fusion
 Maneuvering IS fuel spending. They're the same action. A room that demands precise jetpacking through a corridor is also draining your fuel at a specific rate. The challenge is: can you navigate skillfully enough to arrive at the fuel-gated obstacle with the right amount remaining?
 
+**Wavedash is the key enabler**: Without wavedash, the 1-second jetpack is too short to create meaningful fuel management choices. Wavedash gives skilled players a **fuel-free movement option** — they can cover horizontal distance without spending jetpack fuel. This creates the headroom for fuel forks: a player who wavedashes through early sections arrives at the fork with more fuel than one who jetpacked, unlocking different routes.
+
 ---
 
 ## Gimmick Categories
@@ -101,12 +103,7 @@ Rooms can force this choice: "There's a fuel-gate switch across the room. Do you
 ## What This Means for Level Design
 
 ### Tutorial Chapter (Vertical Slice)
-1. **Rooms 1-3**: Walk, jump basics (pure Celeste)
-2. **Rooms 4-6**: Jetpack introduction (4 directions, fuel management)
-3. **Rooms 7-8**: Dash introduction (precision repositioning)
-4. **Rooms 9-10**: First fuel-state gate (simple: "drain fuel to open door")
-5. **Rooms 11-12**: Maneuvering + fuel management combined
-6. **Room 13-15**: Chapter finale combining all mechanics
+See "Tutorial Chapter Layout" section below for the full 15-room breakdown with patterns.
 
 ### Later Chapters
 Each chapter introduces ONE new fuel-state gimmick type. The maneuvering difficulty escalates independently. The combination of new gimmick + harder maneuvering creates exponential complexity from linear additions.
