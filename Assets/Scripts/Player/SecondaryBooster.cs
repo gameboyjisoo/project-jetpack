@@ -17,6 +17,8 @@ public class SecondaryBooster : MonoBehaviour
     [SerializeField] private float endDecayTime = 0.06f;
     [SerializeField] [Range(0f, 0.5f)] private float momentumRetain = 0.25f;
     [SerializeField] private float dashBufferTime = 0.1f;
+    [SerializeField] private float wavedashSpeedMultiplier = 1.2f;
+    [SerializeField] private float wavedashKeepTime = 0.12f;
 
     [Header("Projectile (optional)")]
     [SerializeField] private GameObject projectilePrefab;
@@ -44,10 +46,14 @@ public class SecondaryBooster : MonoBehaviour
     private float decayTimer;
     private Vector2 decayStartVelocity;
     private float dashBufferTimer;
+    private bool wasAirborneAtDashStart;
+    private float wavedashTimer;
+    private float wavedashSpeed;
 
     public int CurrentAmmo => currentAmmo;
     public int MaxAmmo => maxAmmo;
     public bool IsBoosting => boostTimer > 0f || decayTimer > 0f;
+    public bool IsWavedashing => wavedashTimer > 0f;
     public event System.Action<int> OnAmmoChanged;
 
     /// <summary>
@@ -154,6 +160,17 @@ public class SecondaryBooster : MonoBehaviour
             rb.linearVelocity = boostVelocity;
             gravity.SuppressGravity(Time.fixedDeltaTime * 2f);
 
+            // Wavedash: diagonal-down dash started in air + hit ground = convert to horizontal speed
+            if (wasAirborneAtDashStart && boostVelocity.y < -0.1f && Mathf.Abs(boostVelocity.x) > 0.1f && player.IsGrounded)
+            {
+                wavedashSpeed = boostSpeed * wavedashSpeedMultiplier;
+                rb.linearVelocity = new Vector2(Mathf.Sign(boostVelocity.x) * wavedashSpeed, 0f);
+                wavedashTimer = wavedashKeepTime;
+                boostTimer = 0f;
+                decayTimer = 0f;
+                return;
+            }
+
             if (boostTimer <= 0f)
             {
                 // Start decay instead of hard stop
@@ -176,10 +193,20 @@ public class SecondaryBooster : MonoBehaviour
                     0f);
             }
         }
+
+        // Wavedash speed maintenance — hold speed for a brief window so the player
+        // can jump out of it before ground deceleration kills the momentum
+        if (wavedashTimer > 0f)
+        {
+            wavedashTimer -= Time.fixedDeltaTime;
+            float dir = Mathf.Sign(rb.linearVelocity.x);
+            rb.linearVelocity = new Vector2(dir * wavedashSpeed, rb.linearVelocity.y);
+        }
     }
 
     private void Fire()
     {
+        wasAirborneAtDashStart = !player.IsGrounded;
         currentAmmo--;
         cooldownTimer = cooldown;
         OnAmmoChanged?.Invoke(currentAmmo);

@@ -172,7 +172,8 @@ public class PlayerController : MonoBehaviour
         }
 
         bool isSecondaryBoosting = secondaryBooster != null && secondaryBooster.IsBoosting;
-        movement.Tick(moveInput, isGrounded, jetpack.IsJetpacking, isSecondaryBoosting);
+        bool isWavedashing = secondaryBooster != null && secondaryBooster.IsWavedashing;
+        movement.Tick(moveInput, isGrounded, jetpack.IsJetpacking, isSecondaryBoosting, isWavedashing);
 
         gravity.Tick(jetpack.IsJetpacking, jump.DidJump, jumpHeld);
         jump.ApplyVarJump(jumpHeld);

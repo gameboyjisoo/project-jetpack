@@ -122,7 +122,9 @@ The game uses **diegetic feedback** instead of HUD bars — the player reads fue
 | maxAmmo (dash) | 1 | SecondaryBooster | Single dash, recharges on ground. Pickups can recharge mid-air. |
 | freezeFrameDuration | 0.05s | SecondaryBooster | Celeste-style freeze on dash activation (~3 frames) |
 | endDecayTime | 0.06s | SecondaryBooster | Smooth deceleration at end of dash (not hard stop) |
-| momentumRetain | 0.25 | SecondaryBooster | Keep 25% velocity after dash (momentum carry) |
+| momentumRetain | 0.25 | SecondaryBooster | Keep 25% horizontal velocity after dash (vertical zeroed) |
+| wavedashSpeedMultiplier | 1.2 | SecondaryBooster | Wavedash = 1.2× dash speed (38.4 units/sec). Faster than normal dash. |
+| wavedashKeepTime | 0.12s | SecondaryBooster | Speed maintained for 0.12s after wavedash — jump window to carry speed |
 | Project gravity | -20 | Physics2D settings | |
 
 ## Planned Architecture (see `docs/superpowers/specs/2026-04-07-granular-development-plan-design.md`)
@@ -134,11 +136,11 @@ The project is being developed via two parallel tracks:
 Key planned systems:
 - `PlayerTuning.cs` — ScriptableObject centralizing ALL tuning values (replaces scattered inspector fields)
 - `GravityHandler.cs` — Priority-based override system (jetpack/boost request gravity=0, gimmicks can override)
-- `GameEventBus.cs` — Central pub/sub decoupling gimmicks from player/camera/UI systems
+- `GameEventBus.cs` — Central pub/sub decoupling gimmicks from player/camera/UI systems ✓ (implemented, 9 publishes wired)
 - `ChapterConfig.cs` — Per-chapter rules (default booster mode, fuel limits, gimmick palette)
 - `BoosterSwapZone.cs` — Mid-room booster mode changes (temporary or permanent)
 
-Gimmick ideas: wind turbines (on/off intervals), gravity switches, closing platforms, fuel pickups, shootable switch targets, blind zones.
+Gimmick design: See `design/gdd/design-direction.md` for full design identity. Gimmicks must interact with the fuel system. Three categories: maneuvering challenges, fuel-state gates, and hybrids. Three fuel tiers: High (50-100%, cyan), Mid (20-50%, orange), Low (0-20%, red). Gates use matching colors.
 
 ## Claude Code Game Studios Framework (installed 2026-04-19)
 The project uses the Claude Code Game Studios framework with 49 specialized agents, 72 skills, 12 hooks, and 11 coding standards. Key locations:
@@ -178,8 +180,6 @@ Movement prototype with Celeste-style ground controls, Booster 2.0-style jetpack
 Architecture fully documented: 5 GDDs, 7 ADRs, master architecture doc, traceability matrix. Gate check passed with CONCERNS (non-blocking: dependency chain inconsistency across docs, Resources.Load deprecation awareness, 11/18 systems still need ADRs).
 
 ## What's NOT Done Yet
-- **Jetpack speed may need retune** — at 11 units/sec with 1s fuel, jetpack covers ~11 tiles. May feel too far compared to the tighter ground game. Needs dedicated playtesting.
-- **Wavedash / dash-cancel-to-jump** — planned tech: allow jump during dash decay phase to convert horizontal momentum into jump arc (Celeste hyper dash equivalent)
 - **Wall slide** — not originally planned, but worth considering as a movement option. Could complement or conflict with jetpack wall nudge.
 - Runtime tuning panel not yet built (PlayerTuning ScriptableObject)
 - No screen shake or general juice beyond jetpack exhaust feedback
@@ -214,19 +214,21 @@ Architecture fully documented: 5 GDDs, 7 ADRs, master architecture doc, traceabi
 - **Dash input buffer**: 0.1s buffer matching jump buffer forgiveness.
 - **Dash ammo**: Reduced to 1 (from 3). Recharges on ground. `Recharge()` public method for mid-air pickups.
 - **Jetpack wall nudge**: Now fires once per boost (was every frame, causing infinite wall climbing).
+- **Wavedash**: Diagonal-down dash near ground converts to horizontal speed (1.2× dash speed = 38.4). Speed maintained for 0.12s (jump window). Only triggers from airborne dashes (ground dashes are normal). PlayerMovement skips tick during wavedash window.
 
 ## Next Steps
-1. **Playtest jetpack speed** — at 11 units/sec with 1s fuel, may cover too much distance relative to tighter ground game
-2. **Event Bus ADR** — most urgent architecture gap, blocks Track B work
-3. **Start Pre-Production work**: prototype Vertical Slice (Chapter 1 tutorial rooms)
+1. **Prototype Vertical Slice** — Chapter 1 tutorial rooms (15 rooms). Pattern A (drain to enter) + B (conserve to enter) + C (fuel fork) + E (gun mid-flight). See `design/gdd/design-direction.md`.
+2. **Implement fuel-state gates** — Barriers that read player fuel tier (High/Mid/Low). Color-matched to exhaust gradient (cyan/orange/red).
+3. **Implement gun mode** — Secondary mode swap. Free to use, ranged interaction, no repositioning.
+4. **Sprint plan** — structure Vertical Slice work into sprints
 4. **Sprint plan** — use `/sprint-plan` to create first sprint structure
 5. **Create stories** — use `/create-stories` to generate from GDDs
 
 ## Long-Term Plan
 
 ### Phase 1 — Core Prototype (COMPLETE)
-**Track A:** ~~Refactor PlayerController~~ ✓ → ~~implement gravity axiom~~ ✓ → ~~movement feel tuning pass~~ ✓ → build tuning panel → wavedash/momentum system → booster mode framework.
-**Track B:** Event bus + Core/ → room-snapping camera + respawn → gimmick framework → chapter configuration.
+**Track A:** ~~Refactor PlayerController~~ ✓ → ~~implement gravity axiom~~ ✓ → ~~movement feel tuning pass~~ ✓ → ~~wavedash~~ ✓ → build tuning panel → booster mode framework (gun mode).
+**Track B:** ~~Event bus~~ ✓ → room-snapping camera + respawn → fuel-state gates → gimmick framework → chapter configuration.
 
 ### Phase 2 — Chapter 1 (Tutorial)
 10-15 rooms teaching mechanics progressively. Room transition effects. Basic SFX. Death particles & screen shake. Title screen.

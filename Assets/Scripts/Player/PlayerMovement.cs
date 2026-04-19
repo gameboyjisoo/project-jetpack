@@ -17,10 +17,11 @@ public class PlayerMovement : MonoBehaviour
 
     public void Init(Rigidbody2D rigidbody) => rb = rigidbody;
 
-    public void Tick(Vector2 moveInput, bool isGrounded, bool isJetpacking, bool isSecondaryBoosting)
+    public void Tick(Vector2 moveInput, bool isGrounded, bool isJetpacking, bool isSecondaryBoosting, bool isWavedashing = false)
     {
         if (isJetpacking) return;
         if (isSecondaryBoosting) return;
+        if (isWavedashing) return;
 
         float targetSpeed = moveInput.x * moveSpeed;
         float currentSpeed = rb.linearVelocity.x;
