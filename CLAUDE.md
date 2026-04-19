@@ -154,10 +154,19 @@ The project uses the Claude Code Game Studios framework with 49 specialized agen
 - **Production**: `production/stage.txt` = Pre-Production, `production/review-mode.txt` = lean
 - **Tests**: `Assets/Tests/EditMode/` (4 example tests), `Assets/Tests/PlayMode/`, CI/CD at `.github/workflows/tests.yml`
 
-## Design Targets
-- **Jump, ground movement, secondary boost**: Must feel **exactly like Celeste** — not "inspired by", but matching Celeste's feel precisely.
-- **Jetpack**: Cave Story's Booster 2.0 — the one system that draws from Cave Story, not Celeste.
-- **Fuel feedback**: Diegetic only (particles + audio). No persistent HUD bar.
+## Design Identity (see `design/gdd/design-direction.md` for full document)
+The game is NOT "Celeste with a jetpack." It's built on **two pillars**:
+1. **Maneuvering Skill** (Celeste DNA) — tight corridors, precision gaps, chained movement. Jump, ground movement, and dash feel exactly like Celeste.
+2. **Fuel Timing** (what's uniquely ours) — the environment reacts to the player's analog fuel state. Fuel-threshold barriers, fuel-reactive platforms, fuel-drain zones. The challenge is WHEN you spend fuel, not just WHERE.
+
+The fusion: maneuvering IS fuel spending. Navigating a corridor drains fuel at a rate determined by your skill. The level asks: can you arrive at the fuel gate with the right amount remaining?
+
+**Secondary mode swap**: Dash (costs 1 ammo charge, burst repositioning) vs. Gun (free to use, ranged interaction, no repositioning). Swapping is a fuel management decision — gun lets you hit distant switches without spending fuel to fly there.
+
+**Design targets**:
+- **Jetpack**: Cave Story's Booster 2.0 — sustained directional thrust, the primary traversal tool.
+- **Fuel feedback**: Diegetic only (particles + audio). No persistent HUD bar. The fuel state is analog and readable by both player and environment.
+- **Gimmicks must interact with the fuel system** — no generic platformer gimmicks that ignore fuel.
 
 ## Current State (updated 2026-04-19)
 **Project phase: Pre-Production** (passed Technical Setup gate 2026-04-19).
