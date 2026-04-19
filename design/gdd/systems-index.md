@@ -31,11 +31,11 @@ Project Jetpack is a fast-paced 2D pixel art platformer inspired by Cave Story's
 | 12 | Fuel-State Gates | Gameplay | Vertical Slice | Implemented | design/gdd/design-direction.md | Fuel System, Event Bus |
 | 13 | Gimmick Framework | Gameplay | Vertical Slice | In Progress | — | Event Bus, Chapter Config |
 | 14 | Chapter Configuration | Gameplay | Vertical Slice | Not Started | — | Room System, Gimmick Framework |
-| 15 | Booster Mode Swapping (Gun) | Gameplay | Vertical Slice | Not Started | — | Secondary Booster, Chapter Config |
+| 15 | Booster Mode Swapping (Gun) | Gameplay | Vertical Slice | Implemented | design/gdd/design-direction.md | Secondary Booster |
 | 16 | Momentum / Wavedash | Gameplay | MVP | Implemented | design/gdd/secondary-booster.md | Player Movement, Secondary Booster |
-| 16 | Runtime Tuning Panel | Meta | Vertical Slice | Not Started | — | All player systems |
-| 17 | Audio System | Audio | Vertical Slice | In Progress | — | None |
-| 18 | Hazard System | Gameplay | Vertical Slice | In Progress | — | Physics2D, Respawn System |
+| 17 | Runtime Tuning Panel | Meta | Vertical Slice | Not Started | — | All player systems |
+| 18 | Audio System | Audio | Vertical Slice | In Progress | — | None |
+| 19 | Hazard System | Gameplay | Vertical Slice | Implemented | — | Physics2D, Respawn System |
 
 ---
 
@@ -138,12 +138,12 @@ Project Jetpack is a fast-paced 2D pixel art platformer inspired by Cave Story's
 
 | Metric | Count |
 |--------|-------|
-| Total systems identified | 19 (added Fuel-State Gates) |
-| Design docs created | 6 (+ design-direction.md) |
+| Total systems identified | 19 |
+| Design docs created | 7 (5 GDDs + design-direction + chapter1-room-designs) |
 | Design docs reviewed | 0 |
 | Design docs approved | 0 |
 | MVP systems with GDDs | 5/8 (Movement, Jump, Jetpack, Secondary Booster, Fuel Feedback) |
-| Vertical Slice systems implemented | 3 (Event Bus, Fuel-State Gates, Wavedash) |
+| Vertical Slice systems implemented | 5 (Event Bus, Fuel-State Gates, Wavedash, Gun Mode, Hazards) |
 
 ---
 
@@ -155,7 +155,13 @@ Project Jetpack is a fast-paced 2D pixel art platformer inspired by Cave Story's
 - [x] Define design identity — two pillars: maneuvering + fuel timing (design-direction.md)
 - [x] Implement fuel-state gates (FuelGate.cs, three tiers matching exhaust colors)
 - [x] Implement wavedash (promoted from Full Vision to MVP — core to fuel economy)
-- [ ] Implement gun mode (secondary swap — free ranged interaction)
-- [ ] Room-snapping camera + room transitions
-- [ ] Design and build Chapter 1 tutorial rooms (15 rooms, patterns A/B/C/E)
-- [ ] Review and approve this systems enumeration
+- [x] Implement gun mode (secondary swap — free ranged, no ammo cost)
+- [x] Room-snapping camera code (RoomCamera + RoomManager rewritten)
+- [x] Hazards + death/respawn + fuel/dash pickups
+- [x] Chapter 1 room designs written (design/levels/chapter1-room-designs.md)
+- [ ] **Install Unity MCP server** — blocking all scene-level work
+- [ ] **Re-add sorting layers** — only Default exists, need Background/Tilemap/Player/Foreground/UI
+- [ ] **Clean up scene** — delete MovementTestLevel and Chapter1Generator objects
+- [ ] Build Chapter 1 rooms manually in Unity editor (Tilemaps + placed GameObjects)
+- [ ] Test room transitions with real Room objects
+- [ ] Review and approve systems enumeration

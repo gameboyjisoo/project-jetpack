@@ -34,30 +34,44 @@ This project is built step-by-step, collaboratively. Each change should be small
 - Gas system is separate: `JetpackGas.cs` with events. Fuel state is communicated via `JetpackParticles.cs` (visual) and `JetpackAudioFeedback.cs` (audio) — no HUD bar.
 
 ### Secondary Booster (SecondaryBooster.cs)
-- Fires a projectile (if prefab assigned) and applies recoil in the opposite direction.
-- 3 ammo, recharges on ground, short cooldown between shots.
-- Uses same input loading pattern as PlayerController (Resources.Load + manual edge detection).
-- **Swappable mode system (planned):** SecondaryBooster becomes a host delegating to `IBoosterMode` implementations. Default is `RecoilBooster` (current behavior). `GunBooster` fires aimed projectiles at switch targets. Each mode defines its own recoil, ammo rules, and feedback.
-- **Mode swapping is flexible:** Can happen at chapter-level (via ChapterConfig), room-level (on room entry), or mid-room (via BoosterSwapZone gimmick or pickup). Swaps can be permanent or temporary (reverts when leaving zone).
-- **Wavedash / momentum tech (planned):** Diagonal-downward recoil near ground converts into horizontal ground speed. Landing from jetpack boost at an angle preserves momentum. Enables Celeste/Melee-style speed tech for skilled players.
+- **Swappable mode system** via `SecondaryMode` enum: **Dash** (default) or **Gun**.
+- **Dash mode**: 1 ammo (recharges on ground), 8-direction fixed-distance burst. Celeste-style freeze frame (0.05s) on activation. Smooth decay at end (0.06s). 25% horizontal momentum retained after dash (vertical zeroed). Dash buffer (0.1s) for forgiving input. `Recharge()` method for mid-air pickups.
+- **Gun mode**: FREE to use (no ammo, no fuel cost). Fires projectile in aim direction (8-dir). No movement effect on player. Challenge is aiming mid-flight while managing jetpack trajectory.
+- **Mode swap**: `SwapMode(SecondaryMode)` public method for gimmicks/pickups. Publishes `SecondaryModeChanged` event.
+- **Wavedash** (implemented): Diagonal-down air dash + ground contact → horizontal speed at 1.2× dash speed (38.4 units/sec). Speed maintained for 0.12s (jump window to carry speed). Only triggers from airborne dashes. Core to fuel economy — fuel-free movement option for skilled players.
 
 ### Camera (RoomCamera.cs)
-- **Currently**: simple follow camera for movement testing (orthographic size 8.5).
-- **Eventually**: will return to Celeste-style room-snapping (one screen per room, lerp on transition).
+- **Dual-mode**: Room-snap (locks to room center, smooth-step lerp transitions over 0.3s) or follow (fallback when no rooms exist).
+- **Room-snapping**: `SetRoom(Room)` for instant snap, `TransitionToRoom(Room)` for smooth lerp.
+- Orthographic size 8.5. Rooms should be 30×17 units to fill one screen at 16:9.
+- **Untested with real rooms** — code is written but no rooms have been successfully built in the scene yet. Needs Unity MCP or manual scene setup.
 
 ### Animation (PlayerAnimator.cs)
 - Drives Animator parameters (IsRunning, IsGrounded, IsJetpacking, VelocityY) from PlayerController state.
 - Gracefully skips if no AnimatorController is assigned.
-- Sprite flipping via `transform.localScale.x *= -1` in PlayerController.
+- Sprite flipping via `transform.localScale.x *= -1` in PlayerMovement.
 
-### Test Level (MovementTestLevel.cs)
-- Runtime-spawned test environment. Disables old scene platforms and creates a 120x40 unit enclosed area with scattered platforms, a staircase, and a tight vertical corridor.
-- Temporary — will be removed once real levels exist.
+### Level Generation (DEPRECATED)
+- `MovementTestLevel.cs` and `Chapter1Generator.cs` exist but are **deprecated**. Code-generated rooms caused invisible walls and broken transitions.
+- **Build rooms manually** in Unity editor using Tilemaps + placed GameObjects. See `design/levels/chapter1-room-designs.md` for layouts.
+- A Unity MCP server is needed for Claude to help with scene-level work.
 
 ### Room System (Room.cs, RoomManager.cs)
-- Rooms defined by `Room` MonoBehaviour with size and spawn point.
-- `RoomManager` singleton detects player crossing room boundaries.
-- Currently inactive (camera is in follow mode, only one test room exists).
+- Rooms defined by `Room` MonoBehaviour with size, spawn point, and room ID. `Init()` method for runtime setup.
+- `RoomManager` singleton detects player crossing room boundaries via bounds checking in Update.
+- Publishes `RoomEntered`, `RoomTransitionStarted`, `RoomTransitionCompleted` via Event Bus.
+- **Ready but untested** — needs real Room objects in the scene to function.
+
+### Gimmicks (Assets/Scripts/Gimmicks/)
+- **FuelGate.cs**: Barrier that opens when player's fuel matches required tier (High/Mid/Low). Color-matched to exhaust gradient (cyan/orange/red). Real-time response. `Init()` method for runtime setup. Event Bus integration.
+- Three fuel tiers defined as `FuelTier` enum in JetpackGas.cs: High (50-100%), Mid (20-50%), Low (0-20%).
+
+### Pickups & Hazards
+- **GasRechargePickup.cs**: Mid-air pickup, recharges jetpack fuel. Bobbing animation. Respawns when player lands.
+- **DashRechargePickup.cs**: Mid-air pickup, recharges dash ammo. Respawns when player lands.
+- **Hazard.cs**: Kills player on trigger contact (layer 10). Triggers `PlayerRespawn.Die()`.
+- **PlayerRespawn.cs**: Death → fade → respawn at room spawn point → invincibility flash. Publishes `PlayerDied` event.
+- **Projectile.cs**: Simple projectile for gun mode. Moves forward, destroys on Ground layer contact or after lifetime.
 
 ### Jetpack Fuel Feedback (Minimal UI Philosophy)
 The game uses **diegetic feedback** instead of HUD bars — the player reads fuel state from the jetpack itself, not from a UI element. This keeps the screen clean and the player's eyes on the action.
@@ -75,13 +89,13 @@ The game uses **diegetic feedback** instead of HUD bars — the player reads fue
 - Gamepad supported (left stick/dpad, button south = jump, right trigger = jetpack, button west = fire).
 
 ### Layers & Tags
-- Layer 8: Ground (used for ground check — if not set in Inspector, code forces it to layer 8)
+- Layer 8: Ground (used for ground check — code fallback forces layer 8 if mask is 0)
 - Layer 9: Player
 - Layer 10: Hazard
 - Layer 11: Collectible
 - Layer 12: RoomBoundary
 - Tags: Player, GasRecharge, RoomTransition, Hazard, SecondaryBooster
-- Sorting layers: Default > Background > Tilemap > Player > Foreground > UI
+- Sorting layers: **NEED TO BE RE-ADDED** — only Default exists currently. Should be: Default > Background > Tilemap > Player > Foreground > UI. Add them in Edit → Project Settings → Tags and Layers → Sorting Layers.
 
 ### Sprites
 - All sprites use **Point filtering, no compression, 16 pixels per unit**.
