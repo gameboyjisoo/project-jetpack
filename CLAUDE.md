@@ -170,39 +170,62 @@ The fusion: maneuvering IS fuel spending. Navigating a corridor drains fuel at a
 - **Fuel feedback**: Diegetic only (particles + audio). No persistent HUD bar. The fuel state is analog and readable by both player and environment.
 - **Gimmicks must interact with the fuel system** — no generic platformer gimmicks that ignore fuel.
 
-## Current State (updated 2026-04-19)
+## Current State (updated 2026-04-20)
 **Project phase: Pre-Production** (passed Technical Setup gate 2026-04-19).
 
-Movement prototype with Celeste-style ground controls, Booster 2.0-style jetpack, and 8-direction secondary dash. **PlayerController refactored** into 6 focused components (2026-04-14). **Gravity axiom implemented** (gravity=0 during all propelled states). Diegetic fuel feedback working (exhaust particles + audio pitch decay). Currently playtesting movement feel in a runtime-generated test level. All MVP core systems functional.
+**Movement systems complete and tuned:**
+- Walk, jump, jetpack, dash all working with Celeste-accurate feel
+- Wavedash implemented (diagonal-down air dash → horizontal speed conversion)
+- Gun mode implemented (secondary swap, free ranged projectile, no movement effect)
+- Freeze frames, momentum retain, corner correction, dash buffer all working
+- Zero-friction physics material prevents wall sticking
+- Dual raycast ground check immune to wall false positives
 
-**Movement tuning pass (2026-04-19):** All values retuned for Celeste-accurate proportions. Jump height reduced from ~12× to ~3.5× character height. Dash changed to 1 ammo (from 3) with Celeste-style freeze frames, smooth decay, and 25% momentum retention. Corner correction added (nudges player when clipping platform corners while rising). Dash input buffer added (0.1s, matches jump buffer). Walk, jetpack, and dash speeds all reduced proportionally. See tuning table below for exact values.
+**Infrastructure:**
+- Event Bus implemented (ADR-0008) with 9 publishes across player systems
+- Fuel-state gates implemented (3 tiers: High/Mid/Low matching exhaust colors)
+- Hazards + death/respawn working (Hazard.cs, PlayerRespawn.cs)
+- Fuel + dash pickups working (GasRechargePickup.cs, DashRechargePickup.cs)
+- Room camera + RoomManager rewritten for room-snapping with smooth transitions
+- Design direction document defines two-pillar identity (maneuvering + fuel timing)
 
-Architecture fully documented: 5 GDDs, 7 ADRs, master architecture doc, traceability matrix. Gate check passed with CONCERNS (non-blocking: dependency chain inconsistency across docs, Resources.Load deprecation awareness, 11/18 systems still need ADRs).
+**Scene state:**
+- Old runtime generators (MovementTestLevel, Chapter1Generator) should be DELETED from scene
+- Scene needs to be rebuilt manually with Room GameObjects, Tilemaps, and placed objects
+- **A Unity MCP server is needed** to enable Claude Code to interact with the Unity editor directly (create GameObjects, set layers, inspect scene state). Without it, scene-level work requires manual steps.
+
+Architecture documented: 5 GDDs + design-direction.md, 8 ADRs, master architecture doc, traceability matrix.
 
 ## What's NOT Done Yet
-- **Wall slide** — not originally planned, but worth considering as a movement option. Could complement or conflict with jetpack wall nudge.
+
+### CRITICAL — Blocking level design
+- **Unity MCP integration** — needed for Claude Code to create/modify scene objects directly. Without it, all scene work requires manual Unity editor steps. Research and install a Unity MCP server.
+- **Scene cleanup** — delete old generated objects, set up clean scene with manually placed rooms
+- **Room transitions need testing** — RoomCamera and RoomManager code is written but untested with real rooms
+- **Chapter 1 room designs exist** (see `design/levels/chapter1-room-designs.md`) but no rooms are built yet
+
+### Gameplay features
+- **Wall slide** — not originally planned, worth considering
 - Runtime tuning panel not yet built (PlayerTuning ScriptableObject)
 - No screen shake or general juice beyond jetpack exhaust feedback
-- **Landing feedback needed**: squash animation, dust particles, subtle camera response on landing — makes landings feel impactful instead of silent
-- **Air state visual distinction needed**: player sprite should visually differ between rising, apex, and falling states — lets the player read the jump arc
-- **Dash trail / afterimage effect** — nice-to-have visual feedback for dash, implement after gameplay is complete
+- **Landing feedback needed**: squash animation, dust particles, camera response
+- **Air state visual distinction needed**: rising/apex/falling sprite states
+- **Dash trail / afterimage effect** — nice-to-have, after gameplay complete
 - No SFX or music beyond jetpack audio feedback
 - No title screen or persistent HUD (intentional — minimal UI philosophy)
-- No actual level design beyond the test room
-- Death/respawn system exists (PlayerRespawn.cs) but not fully integrated with hazards
-- No gimmick framework or event bus yet (Event Bus ADR is most urgent gap)
 - Sprites are Cave Story placeholders (original art Phase 5)
 - Animator controller not connected (placeholder sprites)
+
+### Infrastructure
 - tr-registry.yaml needs entries populated from GDDs
 - sprint-status.yaml not yet created
-- No stories created yet (use `/create-stories` from GDDs)
+- No stories created yet
 
 ## Known Issues
-- Scene file `groundLayer` mask doesn't persist — code fallback runs every frame in CheckGround() (not just Awake)
-- Old scene platforms (Ground, Platform_Left/Right/Top) still exist but disabled at runtime by MovementTestLevel
-- Animator throws warning if no controller assigned (handled with null check)
-- **SerializeField values in Inspector override script defaults** — after changing defaults in code, you MUST manually update Inspector values or right-click component → Reset. This caused significant debugging time during movement tuning.
-- Architecture review flagged: dependency chain described differently across master doc, traceability matrix, and individual ADRs — needs reconciliation
+- Scene file `groundLayer` mask doesn't persist — code fallback runs every frame in CheckGround()
+- **SerializeField values in Inspector override script defaults** — after changing defaults in code, you MUST manually update Inspector values or right-click component → Reset
+- Architecture review flagged: dependency chain described differently across docs — needs reconciliation
+- **Code-generated rooms don't work reliably** — invisible walls, broken transitions. Build rooms manually in Unity editor or with Tilemaps instead.
 
 ## Movement Fixes Applied (2026-04-19)
 - **Zero-friction physics material**: Applied at runtime to player collider + rigidbody. Prevents sticking to walls mid-air. Ground movement unaffected (velocity-based, not friction-based).
@@ -217,16 +240,16 @@ Architecture fully documented: 5 GDDs, 7 ADRs, master architecture doc, traceabi
 - **Wavedash**: Diagonal-down dash near ground converts to horizontal speed (1.2× dash speed = 38.4). Speed maintained for 0.12s (jump window). Only triggers from airborne dashes (ground dashes are normal). PlayerMovement skips tick during wavedash window.
 
 ## Next Steps
-1. **Implement gun mode** — Secondary mode swap. Free to use (no ammo/fuel cost), ranged interaction, no repositioning. Aim + shoot mid-flight is the skill challenge.
-2. **Room-snapping camera + room transitions** — Required before building real rooms.
-3. **Design and build Chapter 1 tutorial rooms** (15 rooms, patterns A/B/C/E). See `design/gdd/design-direction.md`.
-4. **Sprint plan** — structure Vertical Slice work into sprints
-5. **Create stories** — use `/create-stories` to generate from GDDs
+1. **Install Unity MCP server** — enables Claude Code to interact with Unity editor directly (create GameObjects, inspect scene, set properties). This is blocking all scene-level work.
+2. **Clean up scene** — delete old generated objects (MovementTestLevel, Chapter1Generator artifacts). Set up clean scene with manually placed rooms using Tilemaps.
+3. **Test room transitions** — verify RoomCamera + RoomManager work with real Room objects
+4. **Build Chapter 1 tutorial rooms** (15 rooms, patterns A/B/C/E). Designs at `design/levels/chapter1-room-designs.md`.
+5. **Sprint plan** — structure Vertical Slice work into sprints
 
 ## Long-Term Plan
 
 ### Phase 1 — Core Prototype (COMPLETE)
-**Track A:** ~~Refactor PlayerController~~ ✓ → ~~implement gravity axiom~~ ✓ → ~~movement feel tuning pass~~ ✓ → ~~wavedash~~ ✓ → build tuning panel → booster mode framework (gun mode).
+**Track A:** ~~Refactor PlayerController~~ ✓ → ~~implement gravity axiom~~ ✓ → ~~movement feel tuning pass~~ ✓ → ~~wavedash~~ ✓ → ~~gun mode~~ ✓ → build tuning panel.
 **Track B:** ~~Event bus~~ ✓ → room-snapping camera + respawn → fuel-state gates → gimmick framework → chapter configuration.
 
 ### Phase 2 — Chapter 1 (Tutorial)

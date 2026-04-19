@@ -5,7 +5,7 @@ using UnityEngine;
 /// </summary>
 public class Room : MonoBehaviour
 {
-    [SerializeField] private Vector2 roomSize = new Vector2(20f, 11.25f);
+    [SerializeField] private Vector2 roomSize = new Vector2(30f, 17f);
     [SerializeField] private Transform spawnPoint;
     [SerializeField] private string roomId;
 
@@ -13,6 +13,13 @@ public class Room : MonoBehaviour
     public Vector2 RoomCenter => (Vector2)transform.position;
     public Transform SpawnPoint => spawnPoint;
     public string RoomId => roomId;
+
+    public void Init(string id, Vector2 size, Transform spawn)
+    {
+        roomId = id;
+        roomSize = size;
+        spawnPoint = spawn;
+    }
 
     public Bounds GetBounds()
     {
