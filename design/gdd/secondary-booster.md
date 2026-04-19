@@ -17,7 +17,7 @@ The Secondary Booster is a short-range, high-speed 8-directional dash that compl
 
 ## 2. Player Fantasy
 
-The secondary booster should feel like a **rocket dash** -- instantaneous, punchy, and committed. When the player fires it, they should feel a sharp kick of speed that cuts through the air in a straight line, leaving an exhaust trail behind. The 8-direction aiming gives precision without the complexity of free-aim. The ammo system creates a "spend wisely" tension: three dashes is generous enough for creative routing but scarce enough that burning all three mid-air without a landing opportunity feels risky.
+The secondary booster should feel **exactly like Celeste's dash** -- instantaneous, punchy, and committed. When the player fires it, they should feel a sharp kick of speed that cuts through the air in a straight line, leaving an exhaust trail behind. The 8-direction aiming gives precision without the complexity of free-aim. The ammo system creates a "spend wisely" tension: three dashes is generous enough for creative routing but scarce enough that burning all three mid-air without a landing opportunity feels risky.
 
 The intended loop is: **assess gap, pick direction, commit to the dash, land to recharge.** Skilled players chain dashes with jetpack boosts and jumps to maintain momentum and reach otherwise inaccessible areas. The dash is faster but shorter than the jetpack -- it is the scalpel to the jetpack's broad stroke.
 
