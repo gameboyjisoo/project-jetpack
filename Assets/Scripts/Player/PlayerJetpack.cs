@@ -4,7 +4,7 @@ using UnityEngine;
 public class PlayerJetpack : MonoBehaviour
 {
     [Header("Jetpack — Booster 2.0")]
-    [SerializeField] private float boostSpeed = 19f;
+    [SerializeField] private float boostSpeed = 11f;
     [SerializeField] private float gasConsumptionRate = 100f;
     [SerializeField] private float wallNudgeSpeed = 2f;
 
@@ -18,6 +18,7 @@ public class PlayerJetpack : MonoBehaviour
     private bool isJetpacking;
     private int boostMode; // 0=off, 1=horizontal, 2=up, 3=down
     private Vector2 jetpackDirection = Vector2.up;
+    private bool wallNudgeUsed;
 
     public bool IsJetpacking => isJetpacking;
     public int BoostMode => boostMode;
@@ -46,6 +47,7 @@ public class PlayerJetpack : MonoBehaviour
     {
         isJetpacking = false;
         boostMode = 0;
+        wallNudgeUsed = false;
     }
 
     /// <summary>
@@ -59,6 +61,7 @@ public class PlayerJetpack : MonoBehaviour
             && jetpackGas != null && jetpackGas.HasGas)
         {
             ActivateBoost();
+            wallNudgeUsed = false;
             activated = true;
         }
 
@@ -78,8 +81,12 @@ public class PlayerJetpack : MonoBehaviour
             return activated;
         }
 
-        if (boostMode == 1 && IsTouchingWall())
+        // Wall nudge: one-time upward bump when hitting a wall during horizontal boost
+        if (boostMode == 1 && !wallNudgeUsed && IsTouchingWall())
+        {
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, wallNudgeSpeed);
+            wallNudgeUsed = true;
+        }
 
         return activated;
     }

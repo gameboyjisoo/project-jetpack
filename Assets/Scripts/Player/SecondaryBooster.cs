@@ -9,10 +9,14 @@ using UnityEngine.InputSystem;
 public class SecondaryBooster : MonoBehaviour
 {
     [Header("Booster")]
-    [SerializeField] private int maxAmmo = 3;
-    [SerializeField] private float boostSpeed = 40f;
-    [SerializeField] private float boostDuration = 0.2f;
+    [SerializeField] private int maxAmmo = 1;
+    [SerializeField] private float boostSpeed = 32f;
+    [SerializeField] private float boostDuration = 0.15f;
     [SerializeField] private float cooldown = 0.15f;
+    [SerializeField] private float freezeFrameDuration = 0.05f;
+    [SerializeField] private float endDecayTime = 0.06f;
+    [SerializeField] [Range(0f, 0.5f)] private float momentumRetain = 0.25f;
+    [SerializeField] private float dashBufferTime = 0.1f;
 
     [Header("Projectile (optional)")]
     [SerializeField] private GameObject projectilePrefab;
@@ -35,11 +39,25 @@ public class SecondaryBooster : MonoBehaviour
     private InputAction fireAction;
     private bool fireHeld;
     private bool prevFireHeld;
+    private bool freezeActive;
+    private float freezeTimer;
+    private float decayTimer;
+    private Vector2 decayStartVelocity;
+    private float dashBufferTimer;
 
     public int CurrentAmmo => currentAmmo;
     public int MaxAmmo => maxAmmo;
-    public bool IsBoosting => boostTimer > 0f;
+    public bool IsBoosting => boostTimer > 0f || decayTimer > 0f;
     public event System.Action<int> OnAmmoChanged;
+
+    /// <summary>
+    /// Recharge dash ammo from external source (mid-air pickup, gimmick, etc.).
+    /// </summary>
+    public void Recharge(int amount = 1)
+    {
+        currentAmmo = Mathf.Min(currentAmmo + amount, maxAmmo);
+        OnAmmoChanged?.Invoke(currentAmmo);
+    }
 
     private void Awake()
     {
@@ -71,6 +89,18 @@ public class SecondaryBooster : MonoBehaviour
 
     private void Update()
     {
+        // Handle freeze frame (uses unscaled time so it works while timeScale=0)
+        if (freezeActive)
+        {
+            freezeTimer -= Time.unscaledDeltaTime;
+            if (freezeTimer <= 0f)
+            {
+                Time.timeScale = 1f;
+                freezeActive = false;
+            }
+            return; // Skip all input during freeze
+        }
+
         cooldownTimer -= Time.deltaTime;
 
         // Recharge ammo on ground
@@ -97,14 +127,22 @@ public class SecondaryBooster : MonoBehaviour
             }
         }
 
-        // Manual edge detection for fire
+        // Manual edge detection for fire with input buffer
         if (fireAction != null)
         {
             prevFireHeld = fireHeld;
             fireHeld = fireAction.IsPressed();
 
-            if (fireHeld && !prevFireHeld && cooldownTimer <= 0f && currentAmmo > 0 && !IsBoosting)
+            if (fireHeld && !prevFireHeld)
+                dashBufferTimer = dashBufferTime;
+
+            dashBufferTimer -= Time.deltaTime;
+
+            if (dashBufferTimer > 0f && cooldownTimer <= 0f && currentAmmo > 0 && !IsBoosting)
+            {
+                dashBufferTimer = 0f;
                 Fire();
+            }
         }
     }
 
@@ -118,7 +156,24 @@ public class SecondaryBooster : MonoBehaviour
 
             if (boostTimer <= 0f)
             {
-                rb.linearVelocity = Vector2.zero;
+                // Start decay instead of hard stop
+                decayTimer = endDecayTime;
+                decayStartVelocity = boostVelocity;
+            }
+        }
+        else if (decayTimer > 0f)
+        {
+            decayTimer -= Time.fixedDeltaTime;
+            float t = Mathf.Clamp01(decayTimer / endDecayTime);
+            rb.linearVelocity = decayStartVelocity * (t * t); // Quadratic ease-out
+            gravity.SuppressGravity(Time.fixedDeltaTime * 2f);
+
+            if (decayTimer <= 0f)
+            {
+                // Only retain horizontal momentum — vertical dashes hand off to gravity cleanly
+                rb.linearVelocity = new Vector2(
+                    decayStartVelocity.x * momentumRetain,
+                    0f);
             }
         }
     }
@@ -133,6 +188,14 @@ public class SecondaryBooster : MonoBehaviour
         boostTimer = boostDuration;
         rb.linearVelocity = boostVelocity;
         gravity.SuppressGravity(boostDuration);
+
+        // Celeste-style freeze frame: brief pause on dash activation
+        if (freezeFrameDuration > 0f)
+        {
+            Time.timeScale = 0f;
+            freezeActive = true;
+            freezeTimer = freezeFrameDuration;
+        }
 
         if (projectilePrefab != null)
         {

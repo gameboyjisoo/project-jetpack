@@ -6,8 +6,8 @@ public class PlayerGravity : MonoBehaviour
     [Header("Gravity")]
     [SerializeField] private float fallGravityMultiplier = 2.0f;
     [SerializeField] private float apexGravityMultiplier = 0.5f;
-    [SerializeField] private float apexThreshold = 4f;
-    [SerializeField] private float maxFallSpeed = 30f;
+    [SerializeField] private float apexThreshold = 2.5f;
+    [SerializeField] private float maxFallSpeed = 20f;
 
     private Rigidbody2D rb;
     private float suppressTimer;

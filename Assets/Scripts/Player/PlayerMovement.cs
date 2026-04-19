@@ -4,7 +4,7 @@ using UnityEngine;
 public class PlayerMovement : MonoBehaviour
 {
     [Header("Ground Movement")]
-    [SerializeField] private float moveSpeed = 10f;
+    [SerializeField] private float moveSpeed = 6f;
     [SerializeField] private float groundAcceleration = 120f;
     [SerializeField] private float groundDeceleration = 120f;
     [SerializeField] private float airMult = 0.65f;

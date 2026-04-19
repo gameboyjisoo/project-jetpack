@@ -4,9 +4,9 @@ using UnityEngine;
 public class PlayerJump : MonoBehaviour
 {
     [Header("Jump — Celeste")]
-    [SerializeField] private float jumpForce = 18f;
+    [SerializeField] private float jumpForce = 8f;
     [SerializeField] private float varJumpTime = 0.2f;
-    [SerializeField] private float jumpHBoost = 2.5f;
+    [SerializeField] private float jumpHBoost = 2.4f;
     [SerializeField] private float coyoteTime = 0.1f;
     [SerializeField] private float jumpBufferTime = 0.1f;
 

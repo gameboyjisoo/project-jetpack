@@ -98,26 +98,32 @@ The game uses **diegetic feedback** instead of HUD bars — the player reads fue
 - Ground/platform Rigidbody2D must be **Static** (not Dynamic), otherwise they fall.
 - Scene file `groundLayer` mask may revert to 0 — code fallback in Awake forces it to layer 8.
 
-## Current Tuning Values
-| Parameter | Value | Notes |
-|---|---|---|
-| moveSpeed | 10 | Near-instant with 120 accel |
-| groundAccel/Decel | 120/120 | Celeste-level snappy |
-| airMult | 0.65 | Celeste's single air control multiplier |
-| jumpForce | 18 | Tall, expressive jumps |
-| varJumpTime | 0.2s | Celeste variable jump hold window (12 frames) |
-| jumpHBoost | 2.5 | Celeste horizontal boost on jump |
-| coyoteTime | 0.1s | Celeste's JumpGraceTime (6 frames) |
-| jumpBufferTime | 0.1s | |
-| boostSpeed | 19 | ~1.9× moveSpeed (Booster 2.0 terminal velocity ratio) |
-| gasConsumptionRate | 100 | ~1 second of boost |
-| wallNudgeSpeed | 2 | Upward push when hitting wall during horizontal boost |
-| fallGravityMultiplier | 2.0 | Fast fall |
-| apexGravityMultiplier | 0.5 | Celeste's half-gravity at jump peak (requires holding jump) |
-| apexThreshold | 4.0 | Velocity below which apex kicks in |
-| maxFallSpeed | 30 | |
-| wallCheckDistance | 0.6 | Raycast distance for wall detection during boost |
-| Project gravity | -20 | In Physics2D settings |
+## Current Tuning Values (updated 2026-04-19)
+| Parameter | Value | Component | Notes |
+|---|---|---|---|
+| moveSpeed | 6 | PlayerMovement | Reduced from 10 for tighter feel |
+| groundAccel/Decel | 120/120 | PlayerMovement | Celeste-level snappy |
+| airMult | 0.65 | PlayerMovement | Celeste's single air control multiplier |
+| jumpForce | 8 | PlayerJump | ~3.5× character height full hold, ~1.6× short tap |
+| varJumpTime | 0.2s | PlayerJump | Celeste variable jump hold window (12 frames) |
+| jumpHBoost | 2.4 | PlayerJump | 40% of moveSpeed (Celeste ratio) |
+| coyoteTime | 0.1s | PlayerJump | Celeste's JumpGraceTime (6 frames) |
+| jumpBufferTime | 0.1s | PlayerJump | |
+| boostSpeed (jetpack) | 11 | PlayerJetpack | ~1.83× moveSpeed (Booster 2.0 ratio) |
+| gasConsumptionRate | 100 | PlayerJetpack | ~1 second of boost |
+| wallNudgeSpeed | 2 | PlayerJetpack | Upward push when hitting wall during horizontal boost |
+| wallCheckDistance | 0.6 | PlayerJetpack | Raycast distance for wall detection |
+| fallGravityMultiplier | 2.0 | PlayerGravity | Fast fall |
+| apexGravityMultiplier | 0.5 | PlayerGravity | Half-gravity at jump peak (requires holding jump) |
+| apexThreshold | 2.5 | PlayerGravity | Velocity below which apex kicks in |
+| maxFallSpeed | 20 | PlayerGravity | Reduced from 30 for proportional feel |
+| boostSpeed (dash) | 32 | SecondaryBooster | Punchy burst, covers ~4.8 tiles in 0.15s |
+| boostDuration (dash) | 0.15s | SecondaryBooster | Celeste-length dash |
+| maxAmmo (dash) | 1 | SecondaryBooster | Single dash, recharges on ground. Pickups can recharge mid-air. |
+| freezeFrameDuration | 0.05s | SecondaryBooster | Celeste-style freeze on dash activation (~3 frames) |
+| endDecayTime | 0.06s | SecondaryBooster | Smooth deceleration at end of dash (not hard stop) |
+| momentumRetain | 0.25 | SecondaryBooster | Keep 25% velocity after dash (momentum carry) |
+| Project gravity | -20 | Physics2D settings | |
 
 ## Planned Architecture (see `docs/superpowers/specs/2026-04-07-granular-development-plan-design.md`)
 
@@ -158,17 +164,23 @@ The project uses the Claude Code Game Studios framework with 49 specialized agen
 
 Movement prototype with Celeste-style ground controls, Booster 2.0-style jetpack, and 8-direction secondary dash. **PlayerController refactored** into 6 focused components (2026-04-14). **Gravity axiom implemented** (gravity=0 during all propelled states). Diegetic fuel feedback working (exhaust particles + audio pitch decay). Currently playtesting movement feel in a runtime-generated test level. All MVP core systems functional.
 
+**Movement tuning pass (2026-04-19):** All values retuned for Celeste-accurate proportions. Jump height reduced from ~12× to ~3.5× character height. Dash changed to 1 ammo (from 3) with Celeste-style freeze frames, smooth decay, and 25% momentum retention. Corner correction added (nudges player when clipping platform corners while rising). Dash input buffer added (0.1s, matches jump buffer). Walk, jetpack, and dash speeds all reduced proportionally. See tuning table below for exact values.
+
 Architecture fully documented: 5 GDDs, 7 ADRs, master architecture doc, traceability matrix. Gate check passed with CONCERNS (non-blocking: dependency chain inconsistency across docs, Resources.Load deprecation awareness, 11/18 systems still need ADRs).
 
 ## What's NOT Done Yet
-- Movement feel tuning ongoing (secondary boost distance/speed may need adjustment to match Celeste dash exactly)
+- **Jetpack speed may need retune** — at 11 units/sec with 1s fuel, jetpack covers ~11 tiles. May feel too far compared to the tighter ground game. Needs dedicated playtesting.
+- **Wavedash / dash-cancel-to-jump** — planned tech: allow jump during dash decay phase to convert horizontal momentum into jump arc (Celeste hyper dash equivalent)
+- **Wall slide** — not originally planned, but worth considering as a movement option. Could complement or conflict with jetpack wall nudge.
 - Runtime tuning panel not yet built (PlayerTuning ScriptableObject)
 - No screen shake or general juice beyond jetpack exhaust feedback
+- **Landing feedback needed**: squash animation, dust particles, subtle camera response on landing — makes landings feel impactful instead of silent
+- **Air state visual distinction needed**: player sprite should visually differ between rising, apex, and falling states — lets the player read the jump arc
+- **Dash trail / afterimage effect** — nice-to-have visual feedback for dash, implement after gameplay is complete
 - No SFX or music beyond jetpack audio feedback
 - No title screen or persistent HUD (intentional — minimal UI philosophy)
 - No actual level design beyond the test room
 - Death/respawn system exists (PlayerRespawn.cs) but not fully integrated with hazards
-- No momentum/acceleration tech for speedrunners (planned: wavedash, momentum conservation)
 - No gimmick framework or event bus yet (Event Bus ADR is most urgent gap)
 - Sprites are Cave Story placeholders (original art Phase 5)
 - Animator controller not connected (placeholder sprites)
@@ -177,23 +189,34 @@ Architecture fully documented: 5 GDDs, 7 ADRs, master architecture doc, traceabi
 - No stories created yet (use `/create-stories` from GDDs)
 
 ## Known Issues
-- Scene file `groundLayer` mask doesn't persist — code fallback forces layer 8 in Awake()
+- Scene file `groundLayer` mask doesn't persist — code fallback runs every frame in CheckGround() (not just Awake)
 - Old scene platforms (Ground, Platform_Left/Right/Top) still exist but disabled at runtime by MovementTestLevel
 - Animator throws warning if no controller assigned (handled with null check)
-- After refactor: verify new components are on Player GameObject in Inspector (RequireComponent should auto-add)
+- **SerializeField values in Inspector override script defaults** — after changing defaults in code, you MUST manually update Inspector values or right-click component → Reset. This caused significant debugging time during movement tuning.
 - Architecture review flagged: dependency chain described differently across master doc, traceability matrix, and individual ADRs — needs reconciliation
 
+## Movement Fixes Applied (2026-04-19)
+- **Zero-friction physics material**: Applied at runtime to player collider + rigidbody. Prevents sticking to walls mid-air. Ground movement unaffected (velocity-based, not friction-based).
+- **Ground check uses dual raycasts**: Two downward raycasts from feet edges instead of OverlapBox. Immune to wall false positives. Normal check (`y > 0.7`) rejects non-floor surfaces.
+- **Ground check uses rb.position**: Physics-authoritative position instead of interpolated transform.position. Fixes detection issues when Player is selected in Inspector during play mode.
+- **Corner correction**: Celeste-style nudge when head clips a platform corner while rising. One-side-blocked detection with cooldown to prevent repeated nudging.
+- **Dash freeze frames**: 0.05s time freeze on dash activation (Celeste-style). Uses unscaledDeltaTime.
+- **Dash momentum retain**: 25% velocity preserved after dash decay instead of hard stop.
+- **Dash input buffer**: 0.1s buffer matching jump buffer forgiveness.
+- **Dash ammo**: Reduced to 1 (from 3). Recharges on ground. `Recharge()` public method for mid-air pickups.
+- **Jetpack wall nudge**: Now fires once per boost (was every frame, causing infinite wall climbing).
+
 ## Next Steps
-1. **Start Pre-Production work**: prototype Vertical Slice (Chapter 1 tutorial rooms)
+1. **Playtest jetpack speed** — at 11 units/sec with 1s fuel, may cover too much distance relative to tighter ground game
 2. **Event Bus ADR** — most urgent architecture gap, blocks Track B work
-3. **Continue movement feel tuning** — Celeste-exact target for jump/movement/dash
+3. **Start Pre-Production work**: prototype Vertical Slice (Chapter 1 tutorial rooms)
 4. **Sprint plan** — use `/sprint-plan` to create first sprint structure
 5. **Create stories** — use `/create-stories` to generate from GDDs
 
 ## Long-Term Plan
 
 ### Phase 1 — Core Prototype (COMPLETE)
-**Track A:** ~~Refactor PlayerController~~ ✓ → ~~implement gravity axiom~~ ✓ → continue movement feel tuning → build tuning panel → wavedash/momentum system → booster mode framework.
+**Track A:** ~~Refactor PlayerController~~ ✓ → ~~implement gravity axiom~~ ✓ → ~~movement feel tuning pass~~ ✓ → build tuning panel → wavedash/momentum system → booster mode framework.
 **Track B:** Event bus + Core/ → room-snapping camera + respawn → gimmick framework → chapter configuration.
 
 ### Phase 2 — Chapter 1 (Tutorial)

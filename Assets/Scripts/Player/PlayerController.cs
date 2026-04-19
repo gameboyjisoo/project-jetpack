@@ -10,15 +10,20 @@ using UnityEngine.InputSystem;
 public class PlayerController : MonoBehaviour
 {
     [Header("Ground Check")]
-    [SerializeField] private Vector2 groundCheckSize = new Vector2(0.8f, 0.05f);
+    [SerializeField] private Vector2 groundCheckSize = new Vector2(0.5f, 0.05f);
     [SerializeField] private Vector2 groundCheckOffset = new Vector2(0f, -0.5f);
     [SerializeField] private LayerMask groundLayer;
+
+    [Header("Corner Correction")]
+    [SerializeField] private float cornerCorrectionMax = 0.4f;
+    [SerializeField] private int cornerCorrectionSteps = 4;
 
     [Header("Input")]
     [SerializeField] private InputActionAsset inputActions;
 
     // Components
     private Rigidbody2D rb;
+    private BoxCollider2D col;
     private PlayerMovement movement;
     private PlayerJump jump;
     private PlayerJetpack jetpack;
@@ -45,8 +50,12 @@ public class PlayerController : MonoBehaviour
     // Ground state
     private bool isGrounded;
     private bool wasGrounded;
+    private float cornerCorrectionCooldown;
 
+    // Exposed for Inspector debugging — watch this during play mode
     public bool IsGrounded => isGrounded;
+    [Header("Debug (read-only)")]
+    [SerializeField] private bool debugIsGrounded;
     public bool IsJetpacking => jetpack.IsJetpacking;
     public bool FacingRight => movement.FacingRight;
     public Vector2 Velocity => rb.linearVelocity;
@@ -55,6 +64,12 @@ public class PlayerController : MonoBehaviour
     private void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
+        col = GetComponent<BoxCollider2D>();
+
+        // Zero-friction material so the player slides off walls instead of sticking
+        var frictionlessMat = new PhysicsMaterial2D("PlayerNoFriction") { friction = 0f, bounciness = 0f };
+        col.sharedMaterial = frictionlessMat;
+        rb.sharedMaterial = frictionlessMat;
         movement = GetComponent<PlayerMovement>();
         jump = GetComponent<PlayerJump>();
         jetpack = GetComponent<PlayerJetpack>();
@@ -130,6 +145,9 @@ public class PlayerController : MonoBehaviour
     {
         CheckGround();
 
+        if (rb.linearVelocity.y > 0f)
+            CornerCorrect();
+
         jump.UpdateTimers(jumpRequested);
         jumpRequested = false;
 
@@ -158,8 +176,26 @@ public class PlayerController : MonoBehaviour
     private void CheckGround()
     {
         wasGrounded = isGrounded;
-        Vector2 checkPos = (Vector2)transform.position + groundCheckOffset;
-        isGrounded = Physics2D.OverlapBox(checkPos, groundCheckSize, 0f, groundLayer);
+
+        // Hardened ground check: always enforce layer 8 if mask is invalid.
+        // Prevents editor Inspector from overwriting the runtime value when Player is selected.
+        if (groundLayer.value == 0)
+            groundLayer = 1 << 8;
+
+        // Use rb.position (physics authoritative) instead of transform.position (interpolated)
+        // Two downward raycasts from feet edges — immune to wall false positives
+        Vector2 feetCenter = rb.position + groundCheckOffset;
+        float halfWidth = groundCheckSize.x * 0.5f;
+        float rayLength = groundCheckSize.y;
+
+        RaycastHit2D hitLeft = Physics2D.Raycast(
+            new Vector2(feetCenter.x - halfWidth, feetCenter.y), Vector2.down, rayLength, groundLayer);
+        RaycastHit2D hitRight = Physics2D.Raycast(
+            new Vector2(feetCenter.x + halfWidth, feetCenter.y), Vector2.down, rayLength, groundLayer);
+
+        isGrounded = (hitLeft.collider != null && hitLeft.normal.y > 0.7f)
+                  || (hitRight.collider != null && hitRight.normal.y > 0.7f);
+        debugIsGrounded = isGrounded;
 
         if (isGrounded && !wasGrounded)
         {
@@ -167,10 +203,66 @@ public class PlayerController : MonoBehaviour
             jetpack.OnLand();
             jump.OnLand();
             gravity.ResetSuppression();
+            cornerCorrectionCooldown = 0f;
         }
 
         if (wasGrounded && !isGrounded && rb.linearVelocity.y <= 0)
             jump.StartCoyoteTime();
+    }
+
+    /// <summary>
+    /// Celeste-style corner correction: when rising and the head clips a platform
+    /// corner, nudge the player horizontally to clear it. Only triggers when one
+    /// side of the head is blocked and the other is open (a genuine corner clip).
+    /// Fires once per cooldown to prevent repeated nudging.
+    /// </summary>
+    private void CornerCorrect()
+    {
+        cornerCorrectionCooldown -= Time.fixedDeltaTime;
+        if (cornerCorrectionCooldown > 0f) return;
+
+        Vector3 pos = transform.position;
+        Vector2 colOffset = col.offset;
+        Vector2 colSize = col.size;
+        float scaleX = Mathf.Abs(transform.localScale.x);
+        float scaleY = Mathf.Abs(transform.localScale.y);
+        float halfW = colSize.x * 0.5f * scaleX;
+        float topY = pos.y + colOffset.y * scaleY + colSize.y * 0.5f * scaleY;
+        float checkDist = Mathf.Abs(rb.linearVelocity.y) * Time.fixedDeltaTime + 0.05f;
+
+        // Cast from left edge and right edge of the collider, upward
+        Vector2 leftEdge = new Vector2(pos.x - halfW, topY);
+        Vector2 rightEdge = new Vector2(pos.x + halfW, topY);
+
+        bool hitLeft = Physics2D.Raycast(leftEdge, Vector2.up, checkDist, groundLayer);
+        bool hitRight = Physics2D.Raycast(rightEdge, Vector2.up, checkDist, groundLayer);
+
+        // Only correct if exactly ONE side is blocked (genuine corner clip)
+        // If both sides are blocked it's a ceiling, not a corner — let the bonk happen
+        if (hitLeft == hitRight) return;
+
+        // Find the smallest nudge that clears the corner
+        float stepSize = cornerCorrectionMax / cornerCorrectionSteps;
+        float nudgeDir = hitLeft ? 1f : -1f; // Nudge away from the blocked side
+
+        for (int i = 1; i <= cornerCorrectionSteps; i++)
+        {
+            float offset = stepSize * i * nudgeDir;
+            Vector2 nudgedPos = new Vector2(pos.x + offset, pos.y);
+
+            // Check head is clear at nudged position
+            Vector2 nudgedHead = new Vector2(pos.x + offset, topY);
+            if (Physics2D.Raycast(nudgedHead, Vector2.up, checkDist, groundLayer))
+                continue; // Still blocked here
+
+            // Check body won't overlap walls at nudged position
+            if (Physics2D.OverlapBox(nudgedPos + colOffset, colSize * 0.9f, 0f, groundLayer))
+                continue; // Body would be inside geometry
+
+            transform.position = new Vector3(pos.x + offset, pos.y, pos.z);
+            cornerCorrectionCooldown = 0.15f; // Don't correct again for 0.15s
+            return;
+        }
     }
 
     private void OnDrawGizmosSelected()
