@@ -120,6 +120,7 @@ public class PlayerJetpack : MonoBehaviour
         else if (boostMode == 2)
             vel.y *= 0.5f;
 
+        GameEventBus.Publish(new PlayerJetpackDeactivated { BoostMode = boostMode });
         rb.linearVelocity = vel;
         isJetpacking = false;
         boostMode = 0;

@@ -30,6 +30,7 @@ public class JetpackGas : MonoBehaviour
         if (previous > 0f && currentGas <= 0f)
         {
             OnGasEmpty?.Invoke();
+            GameEventBus.Publish(new PlayerFuelEmpty());
         }
     }
 
@@ -40,6 +41,7 @@ public class JetpackGas : MonoBehaviour
             currentGas = maxGas;
             OnGasChanged?.Invoke(GasPercent);
             OnGasRecharged?.Invoke();
+            GameEventBus.Publish(new PlayerFuelRecharged());
         }
     }
 

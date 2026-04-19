@@ -52,10 +52,7 @@ public class PlayerController : MonoBehaviour
     private bool wasGrounded;
     private float cornerCorrectionCooldown;
 
-    // Exposed for Inspector debugging — watch this during play mode
     public bool IsGrounded => isGrounded;
-    [Header("Debug (read-only)")]
-    [SerializeField] private bool debugIsGrounded;
     public bool IsJetpacking => jetpack.IsJetpacking;
     public bool FacingRight => movement.FacingRight;
     public Vector2 Velocity => rb.linearVelocity;
@@ -65,11 +62,6 @@ public class PlayerController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody2D>();
         col = GetComponent<BoxCollider2D>();
-
-        // Zero-friction material so the player slides off walls instead of sticking
-        var frictionlessMat = new PhysicsMaterial2D("PlayerNoFriction") { friction = 0f, bounciness = 0f };
-        col.sharedMaterial = frictionlessMat;
-        rb.sharedMaterial = frictionlessMat;
         movement = GetComponent<PlayerMovement>();
         jump = GetComponent<PlayerJump>();
         jetpack = GetComponent<PlayerJetpack>();
@@ -81,6 +73,11 @@ public class PlayerController : MonoBehaviour
         rb.freezeRotation = true;
         rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
         rb.interpolation = RigidbodyInterpolation2D.Interpolate;
+
+        // Zero-friction material so the player slides off walls instead of sticking
+        var frictionlessMat = new PhysicsMaterial2D("PlayerNoFriction") { friction = 0f, bounciness = 0f };
+        col.sharedMaterial = frictionlessMat;
+        rb.sharedMaterial = frictionlessMat;
 
         if (groundLayer.value == 0)
             groundLayer = 1 << 8;
@@ -156,14 +153,23 @@ public class PlayerController : MonoBehaviour
 
         if (jump.TryJump(moveInput, isGrounded, jetpack.IsJetpacking))
         {
-            // Jump clears jetpack state
+            GameEventBus.Publish(new PlayerJumped {
+                Position = rb.position,
+                Velocity = rb.linearVelocity
+            });
         }
 
         bool justPressed = jetpackJustPressed;
         jetpackJustPressed = false;
         bool jetpackActivated = jetpack.Tick(justPressed, jetpackHeld, isGrounded);
         if (jetpackActivated)
-            jump.OnLand(); // Clear jump state when jetpack activates
+        {
+            GameEventBus.Publish(new PlayerJetpackActivated {
+                Direction = rb.linearVelocity.normalized,
+                BoostMode = jetpack.BoostMode
+            });
+            jump.OnLand();
+        }
 
         bool isSecondaryBoosting = secondaryBooster != null && secondaryBooster.IsBoosting;
         movement.Tick(moveInput, isGrounded, jetpack.IsJetpacking, isSecondaryBoosting);
@@ -178,11 +184,9 @@ public class PlayerController : MonoBehaviour
         wasGrounded = isGrounded;
 
         // Hardened ground check: always enforce layer 8 if mask is invalid.
-        // Prevents editor Inspector from overwriting the runtime value when Player is selected.
         if (groundLayer.value == 0)
             groundLayer = 1 << 8;
 
-        // Use rb.position (physics authoritative) instead of transform.position (interpolated)
         // Two downward raycasts from feet edges — immune to wall false positives
         Vector2 feetCenter = rb.position + groundCheckOffset;
         float halfWidth = groundCheckSize.x * 0.5f;
@@ -195,10 +199,13 @@ public class PlayerController : MonoBehaviour
 
         isGrounded = (hitLeft.collider != null && hitLeft.normal.y > 0.7f)
                   || (hitRight.collider != null && hitRight.normal.y > 0.7f);
-        debugIsGrounded = isGrounded;
 
         if (isGrounded && !wasGrounded)
         {
+            GameEventBus.Publish(new PlayerLanded {
+                Position = rb.position,
+                FallSpeed = Mathf.Abs(wasGrounded ? 0f : rb.linearVelocity.y)
+            });
             jetpackGas?.Recharge();
             jetpack.OnLand();
             jump.OnLand();
@@ -214,7 +221,6 @@ public class PlayerController : MonoBehaviour
     /// Celeste-style corner correction: when rising and the head clips a platform
     /// corner, nudge the player horizontally to clear it. Only triggers when one
     /// side of the head is blocked and the other is open (a genuine corner clip).
-    /// Fires once per cooldown to prevent repeated nudging.
     /// </summary>
     private void CornerCorrect()
     {
@@ -238,29 +244,25 @@ public class PlayerController : MonoBehaviour
         bool hitRight = Physics2D.Raycast(rightEdge, Vector2.up, checkDist, groundLayer);
 
         // Only correct if exactly ONE side is blocked (genuine corner clip)
-        // If both sides are blocked it's a ceiling, not a corner — let the bonk happen
         if (hitLeft == hitRight) return;
 
         // Find the smallest nudge that clears the corner
         float stepSize = cornerCorrectionMax / cornerCorrectionSteps;
-        float nudgeDir = hitLeft ? 1f : -1f; // Nudge away from the blocked side
+        float nudgeDir = hitLeft ? 1f : -1f;
 
         for (int i = 1; i <= cornerCorrectionSteps; i++)
         {
             float offset = stepSize * i * nudgeDir;
-            Vector2 nudgedPos = new Vector2(pos.x + offset, pos.y);
-
-            // Check head is clear at nudged position
             Vector2 nudgedHead = new Vector2(pos.x + offset, topY);
             if (Physics2D.Raycast(nudgedHead, Vector2.up, checkDist, groundLayer))
-                continue; // Still blocked here
+                continue;
 
-            // Check body won't overlap walls at nudged position
+            Vector2 nudgedPos = new Vector2(pos.x + offset, pos.y);
             if (Physics2D.OverlapBox(nudgedPos + colOffset, colSize * 0.9f, 0f, groundLayer))
-                continue; // Body would be inside geometry
+                continue;
 
             transform.position = new Vector3(pos.x + offset, pos.y, pos.z);
-            cornerCorrectionCooldown = 0.15f; // Don't correct again for 0.15s
+            cornerCorrectionCooldown = 0.15f;
             return;
         }
     }

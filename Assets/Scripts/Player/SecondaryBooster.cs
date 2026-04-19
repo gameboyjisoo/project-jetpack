@@ -189,6 +189,15 @@ public class SecondaryBooster : MonoBehaviour
         rb.linearVelocity = boostVelocity;
         gravity.SuppressGravity(boostDuration);
 
+        GameEventBus.Publish(new SecondaryUsed {
+            Direction = aimDirection,
+            ModeName = "dash"
+        });
+        GameEventBus.Publish(new PlayerDashed {
+            Direction = aimDirection,
+            Speed = boostSpeed
+        });
+
         // Celeste-style freeze frame: brief pause on dash activation
         if (freezeFrameDuration > 0f)
         {

@@ -60,6 +60,7 @@ public class PlayerRespawn : MonoBehaviour
         if (isDead) return;
         isDead = true;
         OnDeath?.Invoke();
+        GameEventBus.Publish(new PlayerDied { Position = transform.position });
         StartCoroutine(RespawnCoroutine());
     }
 
