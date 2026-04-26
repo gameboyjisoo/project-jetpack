@@ -70,17 +70,14 @@ This project is built step-by-step, collaboratively. Each change should be small
 - **CompositeCollider2D geometryType MUST be Polygons** (not Outlines). Outlines creates edge colliders that break the dual-raycast ground check — rays starting just below the floor surface hit the bottom edge's downward normal, failing the `normal.y > 0.7` check.
 - TilemapCollider2D compositeOperation = Merge.
 
-### How to Build a Room (Manual Workflow)
-Currently rooms are built via editor scripts (`Assets/Editor/BuildTutorialRooms.cs`). To build a room manually in the Unity editor:
-1. **Create Room shell**: Empty GameObject at position (N×60, 0, 0). Add `Room` component, set `roomSize` to (60, 34), set `roomId`.
-2. **Add SpawnPoint**: Child empty, position where player should appear. Assign to Room's `spawnPoint`.
-3. **Add Grid > Walls**: Child `Grid` (cellSize 1,1,1) → grandchild `Walls` on **Layer 8 (Ground)**. Add components: `Tilemap`, `TilemapRenderer`, `TilemapCollider2D` (Merge), `Rigidbody2D` (Static), `CompositeCollider2D` (**Polygons**).
-4. **Paint tiles**: Open **Window > 2D > Tile Palette**, use `GroundTile.asset`. Paint walls, floors, platforms. Room spans tiles (-30,-17) to (29,16) relative to room center.
-5. **Add interactables**: Place hazards (Layer 10, `Hazard` component, trigger BoxCollider2D), pickups (Layer 11, `GasRechargePickup`/`DashRechargePickup`, trigger CircleCollider2D), fuel gates (`FuelGate` component, solid BoxCollider2D). All need `SpriteRenderer` with `GroundSprite.png`.
-6. **Carve openings**: Leave 6-tile gaps in left/right walls (y = -8 to -3) for room transitions.
-7. **Color coding**: orange-red (1,0.35,0) = hazards, cyan (0,0.9,1) = High gates + fuel pickups, deep red (1,0.15,0.15) = Low gates, magenta = dash pickups.
+### How to Build a Room (Level Editor Workflow, 2026-04-26)
+1. **Create Room shell**: `Project Jetpack > New Room` (Ctrl+Shift+R). Auto-positions, creates Room + Grid + Walls (with colliders) + Interactables (with SpawnTileManager) + SpawnPoint. Paints border walls with transition openings.
+2. **Paint walls**: Window > 2D > Tile Palette → select a Cave Story palette (e.g., PrtCave Palette) → **Active Target → Walls** → paint ground, walls, platforms.
+3. **Paint interactables**: Tile Palette → select **Interactables Palette** → **Active Target → Interactables** → paint hazards (orange spikes), pickups (cyan circle, magenta diamond), fuel gates (colored bars), spawn point (green arrow).
+4. **At runtime**: `SpawnTileManager` on the Interactables tilemap spawns prefabs from `Assets/Prefabs/Interactables/` at each SpawnTile position, then clears the placeholder visuals.
+5. **Save scene** (Ctrl+S) after making changes.
 
-**TODO**: This workflow needs to be streamlined with prefabs, a tile palette, and editor tools so rooms can be created without memorizing component stacks. See "What's NOT Done Yet > Level design".
+**Key rule**: Always check the **Active Target** dropdown before painting — Walls for ground tiles, Interactables for hazards/pickups/gates. Wrong target = broken behavior.
 
 ### Gimmicks (Assets/Scripts/Gimmicks/)
 - **FuelGate.cs**: Barrier that opens when player's fuel matches required tier (High/Mid/Low). Color-matched to exhaust gradient (cyan/orange/red). Real-time response. `Init()` method for runtime setup. Event Bus integration.
@@ -278,7 +275,7 @@ Architecture documented: 5 GDDs + design-direction.md, 8 ADRs, master architectu
 - **MCP execute_script + SerializedObject on existing components may not persist** — use MCP `set_property` tool to change serialized fields on existing components instead
 - **Ghost duplicate GameObjects can appear** when editor scripts create objects with the same name as existing ones. Always check `FindObjectsByType` count after scene modifications.
 - **Runtime-created sprites don't persist** — `Sprite.Create(new Texture2D(...))` in editor scripts produces sprites that are lost on scene save/reload. Always use `AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Tiles/GroundSprite.png")` for persistent sprite references. Use `drawMode = SpriteDrawMode.Tiled` with `sr.size` to scale the visual to match collider area.
-- **ASCII layout rows must be exactly 30 chars** — the room build scripts scale ASCII 2× to fill 60×34 rooms. Short rows cause the right border wall to shift inward by 2 tiles, creating protruding walls.
+- **ASCII layout rows must be exactly 30 chars** — legacy room build scripts scale ASCII 2× to fill 60×34 rooms. No longer relevant since rooms are now built via Tile Palette, but old scripts remain in `Assets/Editor/`.
 
 ## Level Editor Setup (2026-04-26)
 - **Cave Story tilesets sliced**: All 5 Prt sheets (Cave, Mimi, Oside, Fall, Hell) fixed to 16 PPU, Point filter, sliced into 16×16 grids via `ISpriteEditorDataProvider` (Unity 6 API — `TextureImporter.spritesheet` is deprecated and doesn't work).
