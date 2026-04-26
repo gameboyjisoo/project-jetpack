@@ -47,9 +47,9 @@ The project uses `Physics2D` with a project gravity of **-20**.
 | Project gravity            | -20    |
 | `fallGravityMultiplier`    | 2.0    |
 | `apexGravityMultiplier`    | 0.5    |
-| `apexThreshold`            | 4.0 units/sec |
-| `maxFallSpeed`             | 30     |
-| Secondary boost duration   | 0.2s   |
+| `apexThreshold`            | 2.5 units/sec |
+| `maxFallSpeed`             | 20     |
+| Secondary boost duration   | 0.15s  |
 
 ### State-Gravity Matrix
 

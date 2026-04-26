@@ -11,15 +11,15 @@
 
 ## 1. Overview
 
-The Secondary Booster is a short-range, high-speed 8-directional dash that complements the primary jetpack. Where the jetpack provides sustained directional thrust for traversal, the secondary booster delivers a brief, explosive burst of movement for dodging, repositioning, and precision gap-closing. It uses a limited ammo system (3 charges, recharges on ground) with a short cooldown between uses, creating a resource-management layer on top of the core movement. The system is designed to host swappable behavior modes in the future, with the current dash as the default mode.
+The Secondary Booster is a short-range, high-speed 8-directional dash that complements the primary jetpack. Where the jetpack provides sustained directional thrust for traversal, the secondary booster delivers a brief, explosive burst of movement for dodging, repositioning, and precision gap-closing. It uses a limited ammo system (1 charge, recharges on ground; mid-air pickups can recharge it) with a freeze frame on activation, creating a resource-management layer on top of the core movement. The system hosts swappable behavior modes: Dash (default) and Gun (free ranged projectile, no movement effect).
 
 ---
 
 ## 2. Player Fantasy
 
-The secondary booster should feel **exactly like Celeste's dash** -- instantaneous, punchy, and committed. When the player fires it, they should feel a sharp kick of speed that cuts through the air in a straight line, leaving an exhaust trail behind. The 8-direction aiming gives precision without the complexity of free-aim. The ammo system creates a "spend wisely" tension: three dashes is generous enough for creative routing but scarce enough that burning all three mid-air without a landing opportunity feels risky.
+The secondary booster should feel **exactly like Celeste's dash** -- instantaneous, punchy, and committed. When the player fires it, they should feel a sharp kick of speed that cuts through the air in a straight line, leaving an exhaust trail behind. The 8-direction aiming gives precision without the complexity of free-aim. The single-ammo system creates a "spend wisely" tension: one dash per air-time forces deliberate commitment — burning it carelessly means arriving at a gap with nothing left.
 
-The intended loop is: **assess gap, pick direction, commit to the dash, land to recharge.** Skilled players chain dashes with jetpack boosts and jumps to maintain momentum and reach otherwise inaccessible areas. The dash is faster but shorter than the jetpack -- it is the scalpel to the jetpack's broad stroke.
+The intended loop is: **assess gap, pick direction, commit to the dash, land to recharge.** Skilled players chain dashes with jetpack boosts and jumps to maintain momentum, and use the wavedash (diagonal-down dash into ground) as fuel-free horizontal speed. The dash is faster but shorter than the jetpack -- it is the scalpel to the jetpack's broad stroke.
 
 ---
 
@@ -66,11 +66,12 @@ The intended loop is: **assess gap, pick direction, commit to the dash, land to 
 
 ### Ammo and Recharge
 
-1. Maximum ammo: `maxAmmo` (3).
+1. Maximum ammo: `maxAmmo` (1).
 2. Ammo decrements by 1 per dash.
-3. Ammo fully recharges to `maxAmmo` when the player is grounded (`player.IsGrounded == true`).
+3. Ammo fully recharges to `maxAmmo` when the player is grounded (`player.IsGrounded == true`) AND not currently boosting (`!IsBoosting`).
 4. Recharge is checked every Update frame -- ammo refills on the first grounded frame after being depleted.
 5. `OnAmmoChanged` event fires on both spend and recharge.
+6. Mid-air pickups (`DashRechargePickup`) can recharge ammo via `Recharge()` method.
 
 ### Cooldown
 
@@ -160,10 +161,10 @@ projectileRange = projectileSpeed * projectileLifetime
 |-----------|-------------------|-----------|
 | Fire pressed with no directional input | Dash in player's facing direction (left or right) | Natural fallback; avoids "nothing happens" confusion |
 | Fire pressed with only vertical input | Dash straight up or straight down | 8-direction system includes cardinal verticals |
-| Fire pressed during primary jetpack boost | Activation still checked (not currently blocked) -- secondary boost overrides velocity | Secondary is higher priority burst; may need explicit mutual exclusion in future |
+| Fire pressed during primary jetpack boost | Jetpack cannot activate while secondary boost is active, and vice versa -- the two systems are mutually exclusive. Jump and jetpack are also mutually exclusive. Secondary boost activation is blocked while `IsBoosting` is true; jetpack activation is blocked while a secondary boost is in progress. | Mutual exclusion prevents conflicting velocity writes and undefined state. Enforced as of 2026-04-20. |
 | Fire pressed while grounded | Dash activates normally; ammo recharges next grounded frame after spending | Ground dashes are a valid technique |
 | All 3 ammo spent mid-air | No more dashes until landing | Creates tension and route-planning pressure |
-| Dash into a wall | Velocity is locked for full duration; player presses against wall, then stops when boost ends | No wall nudge (unlike primary jetpack); may feel stiff -- candidate for future polish |
+| Dash into a wall | Velocity is locked for full duration; player presses against wall, then stops when boost ends | No wall nudge. Primary jetpack wall nudge has also been removed (2026-04-21); neither system provides upward deflection on wall contact. May feel stiff -- candidate for future polish. |
 | Dash off a ledge then back onto ground | Ammo recharges on the grounded frame, even mid-dash-sequence | Enables ground-skimming recharge tech |
 | Cooldown overlaps with boost duration | Cooldown ticks during boost; if cooldown < boostDuration, next dash available immediately after current ends | Current values: 0.15 < 0.2, so cooldown finishes before boost does |
 | Fire pressed during secondary boost | Blocked by `IsBoosting` check | Prevents interrupting an active dash |
@@ -189,9 +190,14 @@ projectileRange = projectileSpeed * projectileLifetime
 
 | Parameter | Field Name | Default | Range | Effect of Increase | Effect of Decrease |
 |-----------|------------|---------|-------|--------------------|--------------------|
-| Dash speed | `boostSpeed` | 40 | 20--80 | Longer dash distance, more explosive feel | Shorter, more controlled dash |
-| Dash duration | `boostDuration` | 0.2s | 0.05--0.5s | Longer dash (distance scales linearly), more committed | Snappier, more responsive |
-| Max ammo | `maxAmmo` | 3 | 1--6 | More air options, less punishing | Tighter resource management, higher stakes |
+| Dash speed | `boostSpeed` | 32 | 20--80 | Longer dash distance, more explosive feel | Shorter, more controlled dash |
+| Dash duration | `boostDuration` | 0.15s | 0.05--0.5s | Longer dash (distance scales linearly), more committed | Snappier, more responsive |
+| Max ammo | `maxAmmo` | 1 | 1--6 | More air options, less punishing | Tighter resource management, higher stakes |
+| Freeze frame duration | `freezeFrameDuration` | 0.05s | 0--0.1s | More dramatic pause on dash | Snappier, less cinematic |
+| End decay time | `endDecayTime` | 0.06s | 0--0.15s | Smoother deceleration at dash end | Harder stop |
+| Momentum retain | `momentumRetain` | 0.25 | 0--1.0 | More post-dash speed preserved | Harder stop after dash |
+| Wavedash speed mult | `wavedashSpeedMultiplier` | 1.2 | 1.0--2.0 | Faster wavedash | Closer to normal dash speed |
+| Wavedash keep time | `wavedashKeepTime` | 0.12s | 0.05--0.3s | Longer window to jump and carry speed | Tighter timing requirement |
 | Cooldown | `cooldown` | 0.15s | 0--0.5s | Slower follow-up dashes, more deliberate pacing | Near-instant chaining, more frantic |
 | Projectile speed | `projectileSpeed` | 20 | 5--50 | Exhaust flies farther back faster | Exhaust lingers near player |
 | Projectile lifetime | `projectileLifetime` | 0.5s | 0.1--2.0s | Exhaust persists longer, longer visual trail | Brief flash, subtle feedback |
@@ -199,9 +205,9 @@ projectileRange = projectileSpeed * projectileLifetime
 
 ### Tuning Relationships
 
-- **Dash distance** = `boostSpeed * boostDuration`. Changing either affects total travel. Prefer adjusting `boostSpeed` for feel and `boostDuration` for commitment.
-- **Dash-to-jetpack ratio**: At current values, one dash (8 units) covers ~42% of a full jetpack tank (19 units). If secondary feels too dominant, reduce speed or ammo rather than buffing jetpack duration.
-- **Cooldown vs duration**: Currently cooldown (0.15s) is shorter than duration (0.2s), so the cooldown expires before the dash ends. This means consecutive dashes have zero dead time. If consecutive dashes should have a gap, set cooldown > boostDuration.
+- **Dash distance** = `boostSpeed * boostDuration` = 32 * 0.15 = 4.8 tiles. Changing either affects total travel. Prefer adjusting `boostSpeed` for feel and `boostDuration` for commitment.
+- **Dash-to-jetpack ratio**: At current values, one dash (4.8 tiles) covers ~44% of a full jetpack tank (11 tiles). With only 1 ammo, dash is a precision tool, not a traversal replacement.
+- **Wavedash speed**: 32 * 1.2 = 38.4 units/sec horizontal. Maintained for 0.12s = ~4.6 tiles if player jumps to carry speed. Core fuel economy tech — fuel-free horizontal movement.
 
 ---
 

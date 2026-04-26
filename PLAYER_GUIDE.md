@@ -27,9 +27,13 @@
 ### How Movement Works
 - **Ground movement** is Celeste-style — near-instant acceleration and deceleration, snappy direction changes. Air control at 65% of ground.
 - **Jump** is Celeste-style variable height — hold jump to maintain upward speed for 0.2 seconds, release to let gravity take over naturally (no instant velocity cut). Adds a small horizontal boost in your input direction. Has coyote time (0.1s) and jump buffering (0.1s). Floats at the apex with half gravity while holding jump.
-- **Jetpack** (Booster 2.0 style): press to activate while airborne, hold to sustain. Boosts in 4 cardinal directions at ~1.9× run speed. Direction = most recently pressed arrow key. **Gravity is completely disabled during jetpack** — you go exactly where you point, for exactly the distance your fuel allows. No invisible sinking or drift. ~1 second of fuel, recharges on landing. On release: horizontal boost halves X velocity, upward boost halves Y velocity, downward boost has no halving. Hitting a wall during horizontal boost nudges you upward.
-- **Secondary Booster** fires a projectile and pushes you in the opposite direction (recoil). **Gravity is briefly disabled during the recoil burst** so you travel on a clean, predictable vector. 3 shots, recharges on ground. The booster's behavior can change depending on the chapter or room — in some areas it becomes a gun for hitting switches, while in others it stays as the default recoil tool.
-- **Wavedash** (advanced tech): fire the secondary booster diagonally downward near the ground to convert recoil into horizontal ground speed. Chain wavedashes to build momentum beyond normal run speed.
+- **Jetpack** (Booster 2.0 style): press to activate while airborne, hold to sustain. Boosts in 4 cardinal directions at ~1.83× run speed. Direction = most recently pressed arrow key. **Gravity is completely disabled during ALL jetpack directions** — you go exactly where you point, for exactly the distance your fuel allows. No invisible sinking or drift. This is a core design axiom. ~1 second of fuel, recharges on landing. On release: horizontal boost halves X velocity only, upward boost halves Y velocity only, downward boost has no halving.
+- **Secondary Booster** is now a swappable mode system with two options:
+  - **Dash mode** (default): 1 ammo (recharges on ground), 8-direction fixed-distance burst. Celeste-style freeze frame (0.05s) on activation. 25% horizontal momentum retained after dash. Dash pickups recharge mid-air. Has dash buffer (0.1s) for forgiving input.
+  - **Gun mode**: FREE to use (no ammo, no fuel cost), fires projectile in aim direction (8-dir). No movement effect on player. Challenge is aiming accurately mid-flight while managing jetpack trajectory.
+  - Modes swap via zones in levels (temporary or permanent).
+- **Wavedash** (core tech for fuel economy): diagonal-down air dash near ground converts to 1.2× dash horizontal speed (38.4 units/sec). Speed maintained for 0.12s (jump window to carry it). Only triggers from airborne dashes — ground dashes are normal. This is how skilled players conserve jetpack fuel and arrive at fuel gates with more options.
+- **Fuel gates** react to your fuel state: cyan gates need >50% fuel (High tier), orange gates need 20-50% (Mid tier), red gates need <20% (Low tier). The environment cares about when you spend fuel, not just where.
 
 ### Reading Your Fuel (No HUD Bar)
 There is no fuel bar on screen. Instead, the jetpack tells you its state directly:
@@ -46,50 +50,68 @@ There is no fuel bar on screen. Instead, the jetpack tells you its state directl
 ```
 Assets/Scripts/
   Camera/
-    RoomCamera.cs              — Follow camera (will become room-snapping later)
+    RoomCamera.cs              — Room-follow + room-snap transition camera
+  Core/
+    GameEventBus.cs            — Central pub/sub event system
+  Gimmicks/
+    FuelGate.cs                — Barrier that opens based on fuel tier (High/Mid/Low)
   Level/
-    Room.cs                    — Defines room boundaries
-    RoomManager.cs             — Detects room transitions
-    MovementTestLevel.cs       — Runtime test level (temporary)
+    Room.cs                    — Room boundary definition (size, spawn, ID)
+    RoomManager.cs             — Auto-discovers rooms, detects transitions
+    GasRechargePickup.cs       — Mid-air fuel pickup, respawns on landing
+    DashRechargePickup.cs      — Mid-air dash pickup, respawns on landing
+    Hazard.cs                  — Kills player on trigger contact
   Player/
-    PlayerController.cs        — Core movement (ground, jump, jetpack)
-    JetpackGas.cs              — Gas resource system with events
-    SecondaryBooster.cs        — Recoil weapon / precision movement (will become swappable mode host)
+    PlayerController.cs        — Orchestrator (ticks all sub-components)
+    PlayerMovement.cs          — Ground movement (Celeste-style MoveTowards)
+    PlayerJump.cs              — Variable jump, coyote time, buffer, apex gravity
+    PlayerJetpack.cs           — 4-direction boost, fuel consumption, velocity halving
+    PlayerGravity.cs           — Fast fall, apex float, gravity modifiers
+    SecondaryBooster.cs        — Dash mode + Gun mode swap system
+    JetpackGas.cs              — Fuel resource with tier events (High/Mid/Low)
     PlayerAnimator.cs          — Drives Animator from player state
-    JetpackParticles.cs        — Exhaust color shift & sputter (fuel visual cue)
-    JetpackAudioFeedback.cs    — Engine pitch decay & sputter SFX (fuel audio cue)
+    PlayerRespawn.cs           — Death → respawn at room spawn point
+    JetpackParticles.cs        — Exhaust color shift (cyan→orange→red)
+    JetpackAudioFeedback.cs    — Engine pitch decay & sputter SFX
+    Projectile.cs              — Gun mode projectile
   UI/
-    GasMeterUI.cs              — Legacy gas fill bar (not used — minimal UI philosophy)
+    GasMeterUI.cs              — Legacy gas bar (intentionally not used)
 ```
-
-### Planned Structure (after refactor)
-See `docs/superpowers/specs/2026-04-07-granular-development-plan-design.md` §6 for the full target file structure. Key additions: `Core/` (event bus, shared types), `Gimmicks/` (environmental effects), `Player/Boosters/` (swappable booster modes), `UI/TuningPanel.cs` (runtime parameter tuning).
 
 ### Other Key Locations
 ```
 Assets/Resources/PlayerInput.inputactions  — Input bindings (loaded at runtime)
-Assets/Scenes/TestRoom.unity               — Main test scene
+Assets/Scenes/TestRoom.unity               — Main test scene (ch1-room-01 and ch1-room-02)
+Assets/Tiles/GroundTile.asset              — Tilemap tile (16×16 white, 16 PPU)
+Assets/Tiles/GroundSprite.png              — Persistent sprite for interactables
 Assets/Sprites/Player/MyChar.png           — Placeholder sprites (Cave Story)
 Assets/Animations/                         — Animation clips and controller
+Assets/Editor/BuildTutorialRooms.cs        — Room build scripts
 ProjectSettings/                           — Physics2D gravity is -20
+design/gdd/                                — Game design documents (5 GDDs + design direction)
+design/levels/chapter1-room-designs.md     — Room designs and layout reference
 ```
 
-### Current Tuning Values (in PlayerController Inspector)
+### Current Tuning Values
 | Parameter | Value | What it does |
 |---|---|---|
-| Move Speed | 10 | Ground run speed |
-| Ground Accel/Decel | 120/120 | Near-instant speed changes |
+| Move Speed | 6 | Ground run speed (reduced from 10 for tighter feel) |
+| Ground Accel/Decel | 120/120 | Near-instant speed changes (Celeste-level snappy) |
 | Air Mult | 0.65 | Air control (Celeste's AirMult) |
-| Jump Force | 18 | Jump height |
-| Var Jump Time | 0.2s | Hold window for variable jump height (Celeste) |
-| Jump H Boost | 2.5 | Horizontal boost added on jump (Celeste) |
-| Coyote Time | 0.1s | Jump grace after leaving ground (Celeste) |
-| Boost Speed | 19 | Jetpack activation velocity (~1.9× run speed, Booster 2.0) |
+| Jump Force | 8 | ~3.5× character height full hold, ~1.6× short tap |
+| Var Jump Time | 0.2s | Hold window for variable jump height |
+| Jump H Boost | 2.4 | 40% of moveSpeed horizontal boost on jump |
+| Coyote Time | 0.1s | Jump grace after leaving ground |
+| Boost Speed (jetpack) | 11 | ~1.83× moveSpeed (Booster 2.0 ratio) |
 | Gas Consumption Rate | 100 | ~1 second of fuel |
-| Wall Nudge Speed | 2 | Upward push when hitting wall during horizontal boost |
-| Fall Gravity Multiplier | 2.0 | Fast fall speed |
-| Apex Gravity Multiplier | 0.5 | Jump peak hang time (requires holding jump, Celeste) |
-| Max Fall Speed | 30 | Terminal velocity |
+| Boost Speed (dash) | 32 | Punchy burst, covers ~4.8 tiles in 0.15s |
+| Boost Duration (dash) | 0.15s | Celeste-length dash |
+| Max Dash Ammo | 1 | Single dash, recharges on ground |
+| Wavedash Speed Mult | 1.2 | 38.4 units/sec horizontal conversion |
+| Fall Gravity Mult | 2.0 | Fast fall speed |
+| Apex Gravity Mult | 0.5 | Jump peak hang time (requires holding jump) |
+| Max Fall Speed | 20 | Terminal velocity (reduced from 30) |
+| Project Gravity | -20 | In Physics2D settings |
 
 ---
 
@@ -111,7 +133,7 @@ ProjectSettings/                           — Physics2D gravity is -20
 - Describe game feel: "landing should feel heavier"
 - Paste Unity console errors directly for debugging
 - Use `/commit` to save your work with a good message
-- Once the tuning panel is built (F1 toggle), use it to live-adjust movement values during Play mode — then tell Claude Code which preset to lock in
+- Tuning values are scattered across component Inspector fields — roadmap includes a centralized PlayerTuning ScriptableObject
 
 ### Parallel Sessions
 You can run multiple Claude Code sessions simultaneously on different tracks:
@@ -183,6 +205,7 @@ git revert <commit-hash>       # creates a new save that undoes that change
 |---|---|
 | Character falls through ground | Ground Layer on PlayerController should be "Ground" (code forces layer 8 as fallback) |
 | No movement / input not working | Check that `Assets/Resources/PlayerInput.inputactions` exists |
-| Animator warnings in console | Expected — animator controller not connected yet, warnings are suppressed |
+| Animator warnings in console | Expected — animator controller not fully connected, warnings are suppressed |
 | Game looks stretched / mobile | Set Game tab aspect ratio dropdown to **16:9** |
 | Can't find input actions file | It's in `Assets/Resources/`, not `Assets/Scripts/Player/` |
+| SerializeField values in Inspector override script defaults | After changing defaults in code, manually update Inspector values or right-click component → Reset |

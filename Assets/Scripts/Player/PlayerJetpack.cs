@@ -6,10 +6,8 @@ public class PlayerJetpack : MonoBehaviour
     [Header("Jetpack — Booster 2.0")]
     [SerializeField] private float boostSpeed = 11f;
     [SerializeField] private float gasConsumptionRate = 100f;
-    [SerializeField] private float wallNudgeSpeed = 2f;
 
-    [Header("Wall Check")]
-    [SerializeField] private float wallCheckDistance = 0.6f;
+    [Header("Ground Layer")]
     [SerializeField] private LayerMask groundLayer;
 
     private Rigidbody2D rb;
@@ -18,7 +16,6 @@ public class PlayerJetpack : MonoBehaviour
     private bool isJetpacking;
     private int boostMode; // 0=off, 1=horizontal, 2=up, 3=down
     private Vector2 jetpackDirection = Vector2.up;
-    private bool wallNudgeUsed;
 
     public bool IsJetpacking => isJetpacking;
     public int BoostMode => boostMode;
@@ -47,21 +44,19 @@ public class PlayerJetpack : MonoBehaviour
     {
         isJetpacking = false;
         boostMode = 0;
-        wallNudgeUsed = false;
     }
 
     /// <summary>
     /// Returns true if jetpack state changed (for clearing jump state).
     /// </summary>
-    public bool Tick(bool justPressed, bool held, bool isGrounded)
+    public bool Tick(bool justPressed, bool held, bool isGrounded, bool isDashing = false)
     {
         bool activated = false;
 
-        if (justPressed && !isGrounded && !isJetpacking
+        if (justPressed && !isGrounded && !isJetpacking && !isDashing
             && jetpackGas != null && jetpackGas.HasGas)
         {
             ActivateBoost();
-            wallNudgeUsed = false;
             activated = true;
         }
 
@@ -79,13 +74,6 @@ public class PlayerJetpack : MonoBehaviour
         {
             EndBoost();
             return activated;
-        }
-
-        // Wall nudge: one-time upward bump when hitting a wall during horizontal boost
-        if (boostMode == 1 && !wallNudgeUsed && IsTouchingWall())
-        {
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, wallNudgeSpeed);
-            wallNudgeUsed = true;
         }
 
         return activated;
@@ -124,14 +112,5 @@ public class PlayerJetpack : MonoBehaviour
         rb.linearVelocity = vel;
         isJetpacking = false;
         boostMode = 0;
-    }
-
-    private bool IsTouchingWall()
-    {
-        if (Mathf.Abs(jetpackDirection.x) < 0.5f) return false;
-        Vector2 origin = (Vector2)transform.position;
-        RaycastHit2D hit = Physics2D.Raycast(origin, new Vector2(jetpackDirection.x, 0f),
-            wallCheckDistance, groundLayer);
-        return hit.collider != null;
     }
 }

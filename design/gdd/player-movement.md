@@ -35,7 +35,7 @@ The player feels completely in control at all times. When they press a direction
 ### 4.1 Core Rules
 
 1. **Velocity-based, not force-based.** Horizontal velocity is set directly via `rb.linearVelocity` (Unity 6 API). No `AddForce`, no physics drag.
-2. **MoveTowards interpolation.** Each physics tick, current X velocity moves toward the target speed at a fixed rate. With acceleration/deceleration at 120 and a target speed of 10, the player reaches full speed in ~0.083 seconds (effectively instant at 50Hz FixedUpdate).
+2. **MoveTowards interpolation.** Each physics tick, current X velocity moves toward the target speed at a fixed rate. With acceleration/deceleration at 120 and a target speed of 6, the player reaches full speed in ~0.05 seconds (effectively instant at 50Hz FixedUpdate).
 3. **Air control multiplier.** When airborne, both acceleration and deceleration rates are multiplied by `airMult` (0.65). This is a single multiplier applied to whichever rate is active, matching Celeste's `AirMult` approach.
 4. **Y velocity is never touched.** The system only writes to `rb.linearVelocity.x`. Vertical velocity is owned by PlayerJump, PlayerJetpack, and PlayerGravity.
 5. **Sprite flip via localScale.** When input direction changes, `transform.localScale.x` is multiplied by -1. No SpriteRenderer.flipX — this ensures child objects (particles, etc.) flip with the player.
@@ -82,7 +82,7 @@ rb.linearVelocity.x = newSpeed
 
 | Variable | Type | Default | Description |
 |---|---|---|---|
-| `moveSpeed` | float | 10 | Maximum horizontal speed in units/sec |
+| `moveSpeed` | float | 6 | Maximum horizontal speed in units/sec |
 | `groundAcceleration` | float | 120 | Rate of speed increase toward target (units/sec^2) |
 | `groundDeceleration` | float | 120 | Rate of speed decrease toward zero (units/sec^2) |
 | `airMult` | float | 0.65 | Multiplier applied to accel/decel when airborne |
@@ -96,10 +96,10 @@ rb.linearVelocity.x = newSpeed
 
 | Derived Value | Formula | Result |
 |---|---|---|
-| Time to full speed (ground) | moveSpeed / groundAcceleration | 0.083s (~4 frames at 50Hz) |
-| Time to full stop (ground) | moveSpeed / groundDeceleration | 0.083s (~4 frames at 50Hz) |
-| Time to full speed (air) | moveSpeed / (groundAcceleration * airMult) | 0.128s (~6 frames at 50Hz) |
-| Time to full stop (air) | moveSpeed / (groundDeceleration * airMult) | 0.128s (~6 frames at 50Hz) |
+| Time to full speed (ground) | moveSpeed / groundAcceleration | 0.05s (~2.5 frames at 50Hz) |
+| Time to full stop (ground) | moveSpeed / groundDeceleration | 0.05s (~2.5 frames at 50Hz) |
+| Time to full speed (air) | moveSpeed / (groundAcceleration * airMult) | 0.077s (~3.8 frames at 50Hz) |
+| Time to full stop (air) | moveSpeed / (groundDeceleration * airMult) | 0.077s (~3.8 frames at 50Hz) |
 | Effective air acceleration | groundAcceleration * airMult | 78 units/sec^2 |
 | Effective air deceleration | groundDeceleration * airMult | 78 units/sec^2 |
 
@@ -137,7 +137,7 @@ rb.linearVelocity.x = newSpeed
 
 | Parameter | Current Value | Safe Range | Effect of Increasing | Effect of Decreasing |
 |---|---|---|---|---|
-| `moveSpeed` | 10 | 6 - 14 | Faster traversal, harder precision platforming | Slower, more deliberate, easier precision |
+| `moveSpeed` | 6 | 4 - 10 | Faster traversal, harder precision platforming | Slower, more deliberate, easier precision |
 | `groundAcceleration` | 120 | 40 - 200 | Snappier response, more "digital" feel | Smoother ramp-up, more "analog" / floaty feel |
 | `groundDeceleration` | 120 | 40 - 200 | Sharper stops, more precise platforming | Slidier stops, ice-skating feel |
 | `airMult` | 0.65 | 0.3 - 1.0 | More air control, easier mid-air correction | Less air control, more jump commitment, harder |
@@ -146,7 +146,7 @@ rb.linearVelocity.x = newSpeed
 
 - **Accel and decel are intentionally equal.** Celeste uses the same value for both. Asymmetric values (fast accel, slow decel) create a slidey feel that conflicts with precision platforming.
 - **airMult below 0.5** makes air reversal feel sluggish and frustrating. Above 0.8, air and ground feel indistinguishable, removing the skill element of committing to a jump trajectory.
-- **moveSpeed is tightly coupled to level design.** Changing it affects how far the player travels during a 1-second jetpack burst (currently 10 units ground vs 19 units jetpack). Adjust level geometry if moveSpeed changes significantly.
+- **moveSpeed is tightly coupled to level design.** Changing it affects how far the player travels during a 1-second jetpack burst (currently 6 units ground vs 11 units jetpack). Adjust level geometry if moveSpeed changes significantly.
 
 ---
 
@@ -180,8 +180,8 @@ rb.linearVelocity.x = newSpeed
 | Input-to-movement latency | < 1 FixedUpdate tick (0.02s) | Input read in Update, applied next FixedUpdate |
 | Time to max speed (ground) | < 0.1s | Must feel instant; no visible ramp |
 | Time to full stop (ground) | < 0.1s | Must feel instant; no visible slide |
-| Direction reversal (ground) | < 0.17s | Decel to zero + accel to full in opposite direction |
-| Direction reversal (air) | < 0.26s | Same sequence at 65% rate |
+| Direction reversal (ground) | < 0.10s | Decel to zero + accel to full in opposite direction (2 × 6/120) |
+| Direction reversal (air) | < 0.16s | Same sequence at 65% rate (2 × 6/78) |
 
 ### 10.3 Weight and Responsiveness Profile
 

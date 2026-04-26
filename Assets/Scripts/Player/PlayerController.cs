@@ -161,7 +161,8 @@ public class PlayerController : MonoBehaviour
 
         bool justPressed = jetpackJustPressed;
         jetpackJustPressed = false;
-        bool jetpackActivated = jetpack.Tick(justPressed, jetpackHeld, isGrounded);
+        bool isDashing = secondaryBooster != null && secondaryBooster.IsBoosting;
+        bool jetpackActivated = jetpack.Tick(justPressed, jetpackHeld, isGrounded, isDashing);
         if (jetpackActivated)
         {
             GameEventBus.Publish(new PlayerJetpackActivated {

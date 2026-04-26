@@ -1,5 +1,7 @@
 # Track A: Feel — Implementation Plan
 
+> **Historical document (2026-04-26):** This plan has been largely executed. The refactor into focused components (PlayerMovement, PlayerJump, PlayerJetpack, PlayerGravity) is complete. Tuning values below were starting points — see CLAUDE.md for current values (moveSpeed=6, jumpForce=8, boostSpeed=11, maxFallSpeed=20). The PlayerTuning ScriptableObject and runtime tuning panel are NOT yet built.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Refactor the monolithic PlayerController into focused, readable components with centralized tuning, implement the deterministic air movement axiom, and build a runtime tuning panel for iterative feel work.
@@ -149,7 +151,7 @@ public class PlayerTuning : ScriptableObject
     [Header("Jetpack — Booster 2.0")]
     public float boostSpeed = 19f;
     public float gasConsumptionRate = 100f;
-    public float wallNudgeSpeed = 2f;
+    // wallNudgeSpeed removed (2026-04-21) — conflicted with gravity=0 axiom
     public float maxGas = 100f;
     public float fuelDrainMultiplier = 1f;
 
@@ -1040,9 +1042,7 @@ public class JetpackBehavior : MonoBehaviour
             return;
         }
 
-        // Wall nudge during horizontal boost
-        if (boostMode == 1 && collision.IsTouchingWall(jetpackDirection.x))
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, tuning.wallNudgeSpeed);
+        // Wall nudge removed (2026-04-21) — conflicted with gravity=0 axiom
     }
 
     private void ActivateBoost()
@@ -1348,7 +1348,7 @@ Press Play. Verify:
 - Jump works (variable height, coyote time, buffer, apex float)
 - Jetpack activates in all 4 directions with gravity = 0 (no sinking during horizontal boost!)
 - Fuel depletes and recharges on landing
-- Wall nudge works during horizontal boost
+- ~~Wall nudge works during horizontal boost~~ (removed 2026-04-21 — conflicted with gravity=0 axiom)
 - Velocity halving on boost release works per mode
 
 - [ ] **Step 5: Delete backup**
@@ -1799,7 +1799,7 @@ public class TuningPanel : MonoBehaviour
             tuning.gasConsumptionRate = LabeledSlider("Gas Drain Rate", tuning.gasConsumptionRate, 10f, 300f);
             tuning.maxGas = LabeledSlider("Max Gas", tuning.maxGas, 20f, 200f);
             tuning.fuelDrainMultiplier = LabeledSlider("Drain Multiplier", tuning.fuelDrainMultiplier, 0.1f, 3f);
-            tuning.wallNudgeSpeed = LabeledSlider("Wall Nudge", tuning.wallNudgeSpeed, 0f, 10f);
+            // wallNudgeSpeed slider removed (2026-04-21)
         }
 
         // Gravity
@@ -1925,7 +1925,7 @@ Used by Claude Code during feel iteration sessions.
 | "jetpack is too slow" | boostSpeed | Increase (try 21-25) |
 | "fuel runs out too fast" | gasConsumptionRate | Decrease (try 70-80); OR maxGas | Increase |
 | "fuel lasts forever" | gasConsumptionRate | Increase (try 120-150) |
-| "can't climb walls" | wallNudgeSpeed | Increase (try 3-5) |
+| ~~"can't climb walls"~~ | ~~wallNudgeSpeed~~ | ~~Removed — wall nudge conflicted with gravity=0 axiom~~ |
 
 ## Fall
 
@@ -2553,7 +2553,7 @@ Expected: All tests pass.
 - [ ] Wavedash: diagonal-down recoil near ground → speed boost
 - [ ] Momentum: fast air → landing preserves some speed
 - [ ] Tuning panel: F1 toggle, sliders work, values change live
-- [ ] Wall nudge: horizontal jetpack into wall → climb
+- [x] ~~Wall nudge: horizontal jetpack into wall → climb~~ (removed 2026-04-21)
 - [ ] No console errors
 
 - [ ] **Step 3: Merge**

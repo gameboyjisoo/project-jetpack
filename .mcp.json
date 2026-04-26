@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "coplay-mcp": {
+      "command": "C:/Users/pz_ma/.local/bin/uvx",
+      "args": ["--python", ">=3.11", "coplay-mcp-server@latest"],
+      "env": {
+        "MCP_TOOL_TIMEOUT": "720000"
+      }
+    }
+  }
+}

@@ -30,7 +30,7 @@ public class FuelGate : MonoBehaviour
     private JetpackGas playerGas;
 
     /// <summary>
-    /// Runtime initialization for code-spawned gates (e.g., from MovementTestLevel).
+    /// Runtime initialization for code-spawned gates.
     /// </summary>
     public void Init(FuelTier tier, bool invert = false, bool stayOpen = false)
     {

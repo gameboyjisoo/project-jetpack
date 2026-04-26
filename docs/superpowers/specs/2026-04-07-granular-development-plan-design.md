@@ -1,7 +1,7 @@
 # Project Jetpack — Granular Development Plan Design
 
 **Date:** 2026-04-07
-**Status:** Approved
+**Status:** Approved (Largely executed as of 2026-04-26. Track A refactor complete, Track B room system + event bus + camera complete. See CLAUDE.md for current state.)
 **Approach:** Parallel Tracks (Track A: Feel, Track B: Infrastructure)
 
 ---
@@ -144,7 +144,7 @@ Replace current scaffolding with a proper Celeste-style room system:
 - **Room definition:** Fixed-size screen (default 20×11.25 units). Rooms placed as GameObjects in Unity Editor. Each room has: ID, bounds, spawn point.
 - **Screen-snap camera:** Replace smooth-follow `RoomCamera.cs` with room-locking camera. Quick lerp (~0.2s) on room transitions.
 - **Respawn system:** Death resets to current room's spawn point. Celeste-style instant respawn, no loading screen. Death is triggered by contact with Hazard layer (Layer 10, already defined in project). Death handling logic (kill player → respawn at room spawn point) is a small script in Level/.
-- **MovementTestLevel.cs disposition:** The runtime-generated test level is removed once B1 delivers real rooms. Until then, it remains functional for Track A's feel work.
+- **MovementTestLevel.cs disposition:** Deleted (2026-04-21). Was removed when real rooms were built via Tilemaps + Coplay MCP.
 
 ### B2. Gimmick Framework
 

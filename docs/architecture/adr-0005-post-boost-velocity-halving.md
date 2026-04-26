@@ -13,7 +13,9 @@ Accepted
 - Project lead (pz_ma)
 
 ## Summary
-When the jetpack deactivates (key release or fuel empty), velocity is halved in a mode-specific way that matches Cave Story exactly: horizontal boost halves X only, upward boost halves Y only, downward boost applies no halving. During horizontal boost, wall contact triggers a wallNudgeSpeed (2) upward velocity.
+When the jetpack deactivates (key release or fuel empty), velocity is halved in a mode-specific way that matches Cave Story exactly: horizontal boost halves X only, upward boost halves Y only, downward boost applies no halving.
+
+> **Update 2026-04-21**: Wall nudge has been removed from the implementation. The wall contact behavior (setting Y velocity to `wallNudgeSpeed` upward during horizontal boost) documented below is no longer active. All other velocity-halving rules remain unchanged.
 
 ## Engine Compatibility
 
@@ -44,13 +46,13 @@ When a boost ends (player releases the key or fuel runs out), the player's veloc
 - Must match Cave Story's Booster 2.0 post-boost behavior for each of the 3 boost modes
 - Must work with the one-shot velocity model from ADR-0004 (no per-frame velocity during boost)
 - Halving must be applied in a single frame on boost termination
-- Wall nudge during horizontal boost must feel natural and not fight gravity
+- ~~Wall nudge during horizontal boost must feel natural and not fight gravity~~ (REMOVED 2026-04-21 — conflicted with gravity=0 axiom)
 
 ### Requirements
 - Horizontal boost (mode 1): halve X velocity, preserve Y
 - Upward boost (mode 2): halve Y velocity, preserve X
 - Downward boost (mode 3): no halving — full velocity maintained
-- Wall nudge: when horizontally boosting into a wall, set Y velocity to wallNudgeSpeed (2) upward
+- ~~Wall nudge: when horizontally boosting into a wall, set Y velocity to wallNudgeSpeed (2) upward~~ (REMOVED 2026-04-21)
 - Must trigger on both key release and fuel depletion
 
 ## Decision
@@ -60,7 +62,7 @@ On boost termination (key release or fuel empty), apply velocity modification ba
 1. **boostMode 1 (horizontal)**: Halve X velocity. `linearVelocity.x *= 0.5f`. Y velocity is untouched — gravity (ADR-0003) resumes pulling the player down from whatever Y velocity they have.
 2. **boostMode 2 (up)**: Halve Y velocity. `linearVelocity.y *= 0.5f`. X velocity is untouched.
 3. **boostMode 3 (down)**: No halving. Full downward velocity is maintained. This makes downward boost the most committed and punishing direction — you slam into whatever is below you.
-4. **Wall nudge**: During an active horizontal boost, if the player contacts a wall (detected via collision), set Y velocity to wallNudgeSpeed (2) upward. This gives a slight upward drift when scraping walls, preventing the player from sticking.
+4. ~~**Wall nudge**~~: REMOVED (2026-04-21). Was: during horizontal boost, wall contact set Y velocity to wallNudgeSpeed (2) upward. Removed because gravity=0 during boost (ADR-0003) caused this upward velocity to persist indefinitely, creating infinite wall climbing.
 5. **boostMode reset**: After halving is applied, set boostMode to 0 (off).
 
 ### Architecture Diagram
@@ -89,7 +91,8 @@ On boost termination (key release or fuel empty), apply velocity modification ba
    [Gravity resumes (ADR-0003)]
 
 
-[Wall Nudge — during active horizontal boost]
+[Wall Nudge — REMOVED 2026-04-21]
+(Diagram preserved for historical context — this behavior is no longer implemented)
 
    [OnCollision with Ground layer wall]
             |
@@ -99,7 +102,7 @@ On boost termination (key release or fuel empty), apply velocity modification ba
            yes
             |
             v
-   [vy = wallNudgeSpeed (2)]
+   [vy = wallNudgeSpeed (2)]  <-- REMOVED: conflicted with gravity=0 axiom
 ```
 
 ### Key Interfaces
@@ -129,15 +132,8 @@ void DeactivateBoost()
     isBoosting = false;
 }
 
-void OnCollisionStay2D(Collision2D col)
-{
-    if (boostMode == 1 && IsWallContact(col))
-    {
-        rb.linearVelocity = new Vector2(
-            rb.linearVelocity.x,
-            wallNudgeSpeed);
-    }
-}
+// Wall nudge code REMOVED (2026-04-21) — conflicted with gravity=0 axiom.
+// Was: OnCollisionStay2D set vy = wallNudgeSpeed during horizontal boost.
 ```
 
 ## Alternatives Considered
@@ -165,19 +161,19 @@ void OnCollisionStay2D(Collision2D col)
 ### Positive
 - Each boost direction produces a distinct, predictable post-boost arc that players can learn and master
 - Downward boost being the "no halving" direction makes it the most committed choice, adding risk/reward depth
-- Wall nudge prevents frustrating wall-sticking during horizontal boost
+- ~~Wall nudge prevents frustrating wall-sticking during horizontal boost~~ (REMOVED 2026-04-21)
 - Matches Cave Story exactly — players who know the source material get the behavior they expect
 
 ### Negative
 - Three separate halving rules add implementation complexity compared to a uniform approach
-- Wall nudge introduces an additional collision check during horizontal boost
+- ~~Wall nudge introduces an additional collision check during horizontal boost~~ (REMOVED 2026-04-21)
 - The asymmetry (down = no halving) may be unintuitive for new players who expect consistent behavior
 
 ### Risks
 - **Risk**: Halving velocity on the same frame as boost termination could interact poorly with Unity's physics step timing
   - **Mitigation**: Apply halving in FixedUpdate to ensure it aligns with the physics step; test frame-by-frame to verify the velocity write takes effect before the next physics solve
-- **Risk**: Wall nudge wallNudgeSpeed (2) may feel too weak or too strong depending on gravity settings
-  - **Mitigation**: Expose wallNudgeSpeed as a tunable constant; test alongside gravity (ADR-0003) values
+- ~~**Risk**: Wall nudge wallNudgeSpeed (2) may feel too weak or too strong depending on gravity settings~~ (REMOVED 2026-04-21 — wall nudge no longer exists)
+  - ~~**Mitigation**: Expose wallNudgeSpeed as a tunable constant; test alongside gravity (ADR-0003) values~~
 - **Risk**: Edge case where fuel depletes and key release happen on the same frame could apply halving twice
   - **Mitigation**: Guard with boostMode check — if boostMode is already 0, skip halving
 
@@ -188,22 +184,22 @@ void OnCollisionStay2D(Collision2D col)
 | jetpack-system.md | Horizontal boost halves X velocity on release | DeactivateBoost case 1: `vx *= 0.5` |
 | jetpack-system.md | Upward boost halves Y velocity on release | DeactivateBoost case 2: `vy *= 0.5` |
 | jetpack-system.md | Downward boost applies no halving | DeactivateBoost case 3: no-op |
-| jetpack-system.md | Wall nudge during horizontal boost | OnCollisionStay2D sets `vy = wallNudgeSpeed (2)` on wall contact during mode 1 |
+| ~~jetpack-system.md~~ | ~~Wall nudge during horizontal boost~~ | ~~OnCollisionStay2D sets `vy = wallNudgeSpeed (2)` on wall contact during mode 1~~ REMOVED 2026-04-21 |
 
 ## Performance Implications
-- **CPU**: Negligible — halving is a single multiplication on one frame; wall nudge is a collision check only during active horizontal boost
-- **Memory**: Negligible — wallNudgeSpeed (float) and boostMode (int) already allocated by ADR-0004
+- **CPU**: Negligible — halving is a single multiplication on one frame
+- **Memory**: Negligible — boostMode (int) already allocated by ADR-0004
 - **Load Time**: No impact
 - **Network**: N/A — single-player game
 
 ## Migration Plan
-If a previous boost deactivation implementation exists, replace it with the mode-specific switch in DeactivateBoost. Ensure wall nudge collision detection is added to the horizontal boost path. Remove any uniform halving or deceleration curves from prior implementations.
+If a previous boost deactivation implementation exists, replace it with the mode-specific switch in DeactivateBoost. Remove any uniform halving or deceleration curves from prior implementations. (Wall nudge migration is no longer applicable — feature removed 2026-04-21.)
 
 ## Validation Criteria
 - Horizontal boost followed by release: measured X velocity is exactly half of boostSpeed (9.5); Y velocity unchanged from pre-release value
 - Upward boost followed by release: measured Y velocity is exactly half of boostSpeed (9.5); X velocity unchanged
 - Downward boost followed by release: both X and Y velocity unchanged from pre-release values
-- Wall nudge: during horizontal boost, contacting a wall produces Y velocity of exactly 2 (upward)
+- ~~Wall nudge: during horizontal boost, contacting a wall produces Y velocity of exactly 2 (upward)~~ — removed 2026-04-21; wall nudge is no longer implemented
 - Fuel depletion triggers the same halving as key release for the active boost mode
 - Double-halving cannot occur (verify boostMode resets to 0 after first deactivation)
 

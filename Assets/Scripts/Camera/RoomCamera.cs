@@ -51,11 +51,36 @@ public class RoomCamera : MonoBehaviour
         activeRoom = room;
         isTransitioning = false;
 
-        if (room != null)
+        if (room != null && target != null)
         {
-            Vector3 roomPos = new Vector3(room.RoomCenter.x, room.RoomCenter.y, zOffset);
-            transform.position = roomPos;
+            // Snap to player position clamped within room bounds
+            transform.position = ClampToRoom(target.position, room);
         }
+        else if (room != null)
+        {
+            transform.position = new Vector3(room.RoomCenter.x, room.RoomCenter.y, zOffset);
+        }
+    }
+
+    private Vector3 ClampToRoom(Vector3 pos, Room room)
+    {
+        float camHalfH = cam != null ? cam.orthographicSize : 8.5f;
+        float camHalfW = camHalfH * (cam != null ? cam.aspect : 16f / 9f);
+
+        Vector2 rc = room.RoomCenter;
+        Vector2 rs = room.RoomSize;
+        float rHalfW = rs.x * 0.5f;
+        float rHalfH = rs.y * 0.5f;
+
+        float minX = rc.x - rHalfW + camHalfW;
+        float maxX = rc.x + rHalfW - camHalfW;
+        float minY = rc.y - rHalfH + camHalfH;
+        float maxY = rc.y + rHalfH - camHalfH;
+
+        float x = (minX < maxX) ? Mathf.Clamp(pos.x, minX, maxX) : rc.x;
+        float y = (minY < maxY) ? Mathf.Clamp(pos.y, minY, maxY) : rc.y;
+
+        return new Vector3(x, y, zOffset);
     }
 
     /// <summary>
@@ -91,7 +116,7 @@ public class RoomCamera : MonoBehaviour
 
         if (activeRoom != null)
         {
-            // Locked to room center — no movement needed
+            UpdateRoomFollow();
             return;
         }
 
@@ -114,6 +139,40 @@ public class RoomCamera : MonoBehaviour
             isTransitioning = false;
             transform.position = transitionEnd;
         }
+    }
+
+    /// <summary>
+    /// Follow the player within the active room, clamping so the camera
+    /// never shows outside the room bounds. For single-screen rooms this
+    /// degrades to center-lock (same as before).
+    /// </summary>
+    private void UpdateRoomFollow()
+    {
+        if (target == null) return;
+
+        float camHalfH = cam.orthographicSize;
+        float camHalfW = camHalfH * cam.aspect;
+
+        Vector2 roomCenter = activeRoom.RoomCenter;
+        Vector2 roomSize = activeRoom.RoomSize;
+        float roomHalfW = roomSize.x * 0.5f;
+        float roomHalfH = roomSize.y * 0.5f;
+
+        // Follow player smoothly
+        Vector3 desired = new Vector3(target.position.x, target.position.y, zOffset);
+        Vector3 pos = Vector3.Lerp(transform.position, desired, followSpeed * Time.deltaTime);
+
+        // Clamp to room bounds so the camera never shows outside the room
+        float minX = roomCenter.x - roomHalfW + camHalfW;
+        float maxX = roomCenter.x + roomHalfW - camHalfW;
+        float minY = roomCenter.y - roomHalfH + camHalfH;
+        float maxY = roomCenter.y + roomHalfH - camHalfH;
+
+        // If room is smaller than viewport on an axis, center on that axis
+        pos.x = (minX < maxX) ? Mathf.Clamp(pos.x, minX, maxX) : roomCenter.x;
+        pos.y = (minY < maxY) ? Mathf.Clamp(pos.y, minY, maxY) : roomCenter.y;
+
+        transform.position = pos;
     }
 
     private void UpdateFollow()

@@ -53,7 +53,7 @@ Split the monolithic PlayerController into **6 focused single-responsibility com
 | `PlayerController` | `PlayerController.cs` | Orchestrator: input reading, ground check, FixedUpdate pipeline dispatch |
 | `PlayerMovement` | `PlayerMovement.cs` | Ground movement: Celeste-style `MoveTowards` accel/decel, air control multiplier, sprite flip |
 | `PlayerJump` | `PlayerJump.cs` | Jump system: coyote time, jump buffer, variable-height jump hold, horizontal jump boost |
-| `PlayerJetpack` | `PlayerJetpack.cs` | Jetpack system: Booster 2.0 activation (4-direction lock-on), fuel drain, wall nudge, end-boost velocity halving |
+| `PlayerJetpack` | `PlayerJetpack.cs` | Jetpack system: Booster 2.0 activation (4-direction lock-on), fuel drain, end-boost velocity halving |
 | `PlayerGravity` | `PlayerGravity.cs` | Gravity handling: dynamic gravity scaling, fast fall, apex float, gravity suppression timer |
 | `SecondaryBooster` | `SecondaryBooster.cs` | Secondary boost: 8-direction fixed-distance dash, ammo with ground recharge, cooldown, optional reverse projectile |
 
@@ -66,7 +66,7 @@ The orchestrator (`PlayerController.FixedUpdate`) calls subsystems in this exact
 2. UpdateTimers()          -- Decrements coyote timer, jump buffer timer, variable jump timer
 3. HandleJumpRelease()     -- Cancels variable jump hold when button released
 4. TryJump()              -- Consumes jump buffer if grounded/coyote, applies force + h-boost
-5. Jetpack.Tick()         -- Activates/sustains/ends boost, drains fuel, wall nudge
+5. Jetpack.Tick()         -- Activates/sustains/ends boost, drains fuel, dash guard
 6. Movement.Tick()        -- Horizontal accel/decel (skipped during jetpack or secondary boost)
 7. Gravity.Tick()         -- Sets gravityScale based on state (falling, apex, suppressed)
 8. ApplyVarJump()         -- Sustains jump velocity while button held and timer active
@@ -196,7 +196,7 @@ This keeps `PlayerController` as the single public interface while internal comp
 
 - **Component count**: 6 MonoBehaviours + Rigidbody2D + BoxCollider2D on one GameObject. Unity handles this with negligible overhead for a single player character.
 - **GetComponent calls**: All `GetComponent<T>()` calls happen once in `Awake()` and are cached. Zero per-frame `GetComponent` usage.
-- **Physics**: Single `Physics2D.OverlapBox` per FixedUpdate for ground check. One `Physics2D.Raycast` per FixedUpdate during jetpack wall check. Both are lightweight for a single-player 2D game.
+- **Physics**: Single `Physics2D.OverlapBox` per FixedUpdate for ground check. Lightweight for a single-player 2D game. (The per-FixedUpdate jetpack wall check raycast was removed alongside wall nudge on 2026-04-21.)
 - **Allocations**: No per-frame heap allocations in any component's `Tick()` method. All state is stored in value-type fields.
 - **Scaling concern**: None at current scope. This architecture is for a single player character, not hundreds of NPCs. If enemy AI needed similar decomposition, a data-oriented approach (ECS or struct-based) would be more appropriate.
 
@@ -208,7 +208,7 @@ Completed 2026-04-14. The migration followed these steps:
 
 1. **Extract PlayerMovement**: Moved ground accel/decel and sprite flip logic out of monolithic PlayerController into `PlayerMovement.cs`. Verified movement feel was identical.
 2. **Extract PlayerJump**: Moved coyote time, jump buffer, variable jump hold, and horizontal boost into `PlayerJump.cs`. Verified all jump edge cases (buffered jump, coyote jump, short hop, full hop).
-3. **Extract PlayerJetpack**: Moved Booster 2.0 activation, fuel drain, direction lock-on, wall nudge, and end-boost halving into `PlayerJetpack.cs`. Verified all 4 boost directions and wall nudge behavior.
+3. **Extract PlayerJetpack**: Moved Booster 2.0 activation, fuel drain, direction lock-on, and end-boost halving into `PlayerJetpack.cs`. Verified all 4 boost directions. (Wall nudge was later removed — conflicted with gravity=0 axiom.)
 4. **Extract PlayerGravity**: Moved gravity scaling, fast fall, apex float, and suppression timer into `PlayerGravity.cs`. Verified apex hang time and fall speed cap.
 5. **Refactor PlayerController**: Reduced to orchestrator role -- input reading, ground check, and FixedUpdate pipeline dispatch.
 6. **Verify SecondaryBooster integration**: Confirmed SecondaryBooster communicates via `PlayerController` properties and `PlayerGravity.SuppressGravity()`.
@@ -239,7 +239,7 @@ This architecture was designed to support the gameplay systems documented in the
 |---|---|---|
 | `design/gdd/player-movement.md` | Player Movement (System #1) | `PlayerMovement.cs` encapsulates Celeste-style MoveTowards accel/decel with configurable ground speed, acceleration, deceleration, and air control multiplier |
 | `design/gdd/player-jump.md` | Player Jump (System #2) | `PlayerJump.cs` encapsulates coyote time, jump buffer, variable-height hold, and horizontal boost -- all independently tunable |
-| `design/gdd/jetpack-system.md` | Jetpack System (System #3) | `PlayerJetpack.cs` encapsulates Booster 2.0 directional lock-on, fuel integration via `JetpackGas`, wall nudge, and end-boost velocity halving |
+| `design/gdd/jetpack-system.md` | Jetpack System (System #3) | `PlayerJetpack.cs` encapsulates Booster 2.0 directional lock-on, fuel integration via `JetpackGas`, end-boost velocity halving, and dash-guard (blocks jetpack during active dash) |
 | `design/gdd/secondary-booster.md` | Secondary Booster (System #4) | `SecondaryBooster.cs` encapsulates 8-direction dash, ammo/cooldown, gravity suppression, and optional reverse projectile |
 
 The component architecture ensures that as these design docs evolve, each system can be tuned and iterated on independently without risk of regressions in unrelated systems.

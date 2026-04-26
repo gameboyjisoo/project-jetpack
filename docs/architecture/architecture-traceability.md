@@ -31,7 +31,7 @@
 | REQ-JET-002 | jetpack-system.md | Jetpack | Velocity set once on activation (not per-frame) | ADR-0004 | Implemented |
 | REQ-JET-003 | jetpack-system.md | Jetpack | Gravity=0 during boost (deterministic axiom) | ADR-0003 | Implemented |
 | REQ-JET-004 | jetpack-system.md | Jetpack | Mode-specific velocity halving on release | ADR-0005 | Implemented |
-| REQ-JET-005 | jetpack-system.md | Jetpack | Wall nudge during horizontal boost | ADR-0005 | Implemented |
+| REQ-JET-005 | jetpack-system.md | Jetpack | ~~Wall nudge during horizontal boost~~ | ADR-0005 | REMOVED (conflicted with gravity=0 axiom, 2026-04-21) |
 | REQ-JET-006 | jetpack-system.md | Jetpack | ~1s fuel, recharges on landing | ADR-0004 | Implemented |
 | REQ-SEC-001 | secondary-booster.md | Secondary Booster | 8-direction fixed-distance dash | ADR-0001, ADR-0003 | Implemented |
 | REQ-SEC-002 | secondary-booster.md | Secondary Booster | 3 ammo, recharge on ground | ADR-0001 | Implemented |

@@ -36,6 +36,7 @@ Project Jetpack is a fast-paced 2D pixel art platformer inspired by Cave Story's
 | 17 | Runtime Tuning Panel | Meta | Vertical Slice | Not Started | — | All player systems |
 | 18 | Audio System | Audio | Vertical Slice | In Progress | — | None |
 | 19 | Hazard System | Gameplay | Vertical Slice | Implemented | — | Physics2D, Respawn System |
+| 20 | Level Editor Workflow | Meta | Vertical Slice | Not Started | — | Room System, Tilemap |
 
 ---
 
@@ -46,7 +47,7 @@ Project Jetpack is a fast-paced 2D pixel art platformer inspired by Cave Story's
 | **Core** | Foundation systems everything depends on | Player Movement, Jump, Jetpack, Gravity, Fuel, Camera, Room, Event Bus |
 | **Gameplay** | Systems that create challenge and variety | Gimmick Framework, Chapter Config, Booster Mode Swapping, Momentum/Wavedash, Hazards |
 | **Presentation** | Visual and audio feedback | Player Animation, Audio System |
-| **Meta** | Development and tuning tools | Runtime Tuning Panel |
+| **Meta** | Development and tuning tools | Runtime Tuning Panel, Level Editor Workflow |
 
 ---
 
@@ -96,8 +97,9 @@ Project Jetpack is a fast-paced 2D pixel art platformer inspired by Cave Story's
 
 ### Polish Layer (depends on everything)
 
-1. Momentum/Wavedash (planned) — depends on: Movement, Secondary Booster
+1. Momentum/Wavedash (implemented) — depends on: Movement, Secondary Booster
 2. Runtime Tuning Panel (planned) — depends on: all player systems
+3. Level Editor Workflow (planned) — depends on: Room System, Tilemap. Tile palette, prefabs for interactables, room template, editor tools for developer-driven level creation without code.
 
 ---
 
@@ -107,7 +109,7 @@ Project Jetpack is a fast-paced 2D pixel art platformer inspired by Cave Story's
 |-------|--------|----------|-------|-------------|
 | 1 | Player Movement | MVP | Core | S (extract from CLAUDE.md) |
 | 2 | Player Jump | MVP | Core | S (extract from CLAUDE.md) |
-| 3 | Jetpack System | MVP | Core | M (complex — 4 directions, fuel, wall nudge) |
+| 3 | Jetpack System | MVP | Core | M (complex — 4 directions, fuel, end-boost halving) |
 | 4 | Secondary Booster | MVP | Core | S (extract from CLAUDE.md) |
 | 5 | Fuel Feedback | MVP | Presentation | S (extract from CLAUDE.md) |
 | 6 | Camera System | Vertical Slice | Feature | S (simple follow → room snap) |
@@ -138,12 +140,13 @@ Project Jetpack is a fast-paced 2D pixel art platformer inspired by Cave Story's
 
 | Metric | Count |
 |--------|-------|
-| Total systems identified | 19 |
+| Total systems identified | 20 |
 | Design docs created | 7 (5 GDDs + design-direction + chapter1-room-designs) |
 | Design docs reviewed | 0 |
 | Design docs approved | 0 |
 | MVP systems with GDDs | 5/8 (Movement, Jump, Jetpack, Secondary Booster, Fuel Feedback) |
 | Vertical Slice systems implemented | 5 (Event Bus, Fuel-State Gates, Wavedash, Gun Mode, Hazards) |
+| Tutorial rooms built | 4 (compressed from 15-room draft, 2026-04-26) |
 
 ---
 
@@ -159,9 +162,11 @@ Project Jetpack is a fast-paced 2D pixel art platformer inspired by Cave Story's
 - [x] Room-snapping camera code (RoomCamera + RoomManager rewritten)
 - [x] Hazards + death/respawn + fuel/dash pickups
 - [x] Chapter 1 room designs written (design/levels/chapter1-room-designs.md)
-- [ ] **Install Unity MCP server** — blocking all scene-level work
+- [x] **Install Unity MCP server** — Coplay MCP installed (2026-04-21)
 - [ ] **Re-add sorting layers** — only Default exists, need Background/Tilemap/Player/Foreground/UI
-- [ ] **Clean up scene** — delete MovementTestLevel and Chapter1Generator objects
-- [ ] Build Chapter 1 rooms manually in Unity editor (Tilemaps + placed GameObjects)
-- [ ] Test room transitions with real Room objects
+- [x] **Clean up scene** — MovementTestLevel.cs and Chapter1Generator.cs deleted (2026-04-21)
+- [x] Build Chapter 1 rooms in Unity editor (Tilemaps + placed GameObjects) — Rooms 1-2 built (60×34, 2026-04-21)
+- [x] Test room transitions with real Room objects — working (2026-04-21)
+- [x] Compress tutorial from 15 rooms to 4 (2026-04-26) — Move+Fly, Dash+Survive, The Fork, Graduation
+- [ ] **Level editor workflow** — tile palette, interactable prefabs, room template, editor tools for developer-driven level creation
 - [ ] Review and approve systems enumeration

@@ -64,7 +64,7 @@ The player should feel like they have **precise, trustworthy control** over thei
                                ▼          ┌──────────────┐
                         ┌──────────────┐  │  JUMP RISING │
                         │   APEX       │  │  (from coyote)│
-                        │ |vy| < 4,   │  └──────────────┘
+                        │ |vy| < 2.5, │  └──────────────┘
                         │ jump held    │
                         │ gravity 0.5x │
                         └──────┬───────┘
@@ -177,24 +177,24 @@ Full-hold jump height (simplified, assuming constant gravity during rise after v
 
 ```
 Phase 1 (varJump hold): h1 = jumpForce * varJumpTime
-                            = 18 * 0.2 = 3.6 units
+                            = 8 * 0.2 = 1.6 units
 
 Phase 2 (normal gravity deceleration from jumpForce):
-    Using v^2 = u^2 - 2*g*h, where g = Physics2D.gravity.y * gravityScale * rb.mass
-    With default gravity -9.81, scale 1.0:
-    h2 = jumpForce^2 / (2 * 9.81) = 324 / 19.62 ≈ 16.5 units
+    Using v^2 = u^2 - 2*g*h, where g = |Physics2D.gravity.y| * gravityScale
+    Project gravity = 20 (Physics2D setting), scale 1.0:
+    h2 = jumpForce^2 / (2 * 20) = 64 / 40 = 1.6 units
 
-Total ≈ h1 + h2 ≈ 20 units (full hold)
+Total ≈ h1 + h2 ≈ 3.2 units (full hold)
 ```
 
 Tap jump height (release immediately, no varJump hold):
 
 ```
 varJumpTimer = 0 on release, gravity decelerates from jumpForce at 1.0x:
-h_tap = jumpForce^2 / (2 * 9.81) ≈ 16.5 units
+h_tap = jumpForce^2 / (2 * 20) = 64 / 40 = 1.6 units
 ```
 
-Note: Actual heights depend on Unity's physics step integration and whether apex float triggers. These are approximations for tuning reference. Use the runtime tuning panel for precise measurement.
+Note: Actual heights depend on Unity's physics step integration and whether apex float triggers. These are approximations for tuning reference. Project gravity = -20 (set in Physics2D settings) — significantly stronger than Unity's default -9.81. Use the runtime tuning panel for precise measurement.
 
 ---
 
@@ -234,15 +234,15 @@ Note: Actual heights depend on Unity's physics step integration and whether apex
 
 | Parameter | Field | Default | Unit | Effect of Increase | Effect of Decrease |
 |-----------|-------|---------|------|--------------------|--------------------|
-| Jump Force | `jumpForce` | 18 | units/sec | Higher jumps, faster rise | Lower jumps, slower rise |
+| Jump Force | `jumpForce` | 8 | units/sec | Higher jumps, faster rise | Lower jumps, slower rise |
 | Variable Jump Time | `varJumpTime` | 0.2 (12 frames) | seconds | Wider hold window, higher max jump, more height control | Tighter window, less height difference between tap and hold |
-| Horizontal Boost | `jumpHBoost` | 2.5 | units/sec | More horizontal momentum on jump, longer running jumps | Less directional influence on jump |
+| Horizontal Boost | `jumpHBoost` | 2.4 | units/sec | More horizontal momentum on jump, longer running jumps | Less directional influence on jump |
 | Coyote Time | `coyoteTime` | 0.1 (6 frames) | seconds | More forgiving ledge jumps | Stricter timing required |
 | Jump Buffer | `jumpBufferTime` | 0.1 (6 frames) | seconds | More forgiving early presses | Stricter pre-land timing |
 | Fall Gravity Mult | `fallGravityMultiplier` | 2.0 | multiplier | Faster descent, snappier feel | Floatier descent |
 | Apex Gravity Mult | `apexGravityMultiplier` | 0.5 | multiplier | Floatier apex, more air control time | Snappier apex transition |
-| Apex Threshold | `apexThreshold` | 4.0 | units/sec | Wider apex window (more of the arc feels floaty) | Narrower apex (brief float) |
-| Max Fall Speed | `maxFallSpeed` | 30 | units/sec | Faster terminal velocity | Slower terminal velocity, floatier |
+| Apex Threshold | `apexThreshold` | 2.5 | units/sec | Wider apex window (more of the arc feels floaty) | Narrower apex (brief float) |
+| Max Fall Speed | `maxFallSpeed` | 20 | units/sec | Faster terminal velocity | Slower terminal velocity, floatier |
 
 All values are `[SerializeField]` and editable in the Unity Inspector at runtime.
 
@@ -316,16 +316,16 @@ If a tutorial is added later, jump controls would be communicated through enviro
 
 ### Functional
 
-- [ ] Pressing jump while grounded sets vertical velocity to `jumpForce` (18)
+- [ ] Pressing jump while grounded sets vertical velocity to `jumpForce` (8)
 - [ ] Holding jump extends the ascent for up to `varJumpTime` (0.2s) by maintaining `vy >= jumpForce`
 - [ ] Releasing jump early zeros the varJump timer but does NOT cut velocity instantly
 - [ ] Pressing jump within `coyoteTime` (0.1s) of leaving ground produces a valid jump
 - [ ] Pressing jump up to `jumpBufferTime` (0.1s) before landing triggers a jump on the landing frame
 - [ ] Jump is rejected while `isJetpacking` is true
-- [ ] Horizontal velocity receives `moveInput.x * jumpHBoost` (2.5) additive boost on jump frame
-- [ ] Gravity scale is 0.5x when `didJump && jumpHeld && |vy| < apexThreshold` (apex float)
+- [ ] Horizontal velocity receives `moveInput.x * jumpHBoost` (2.4) additive boost on jump frame
+- [ ] Gravity scale is 0.5x when `didJump && jumpHeld && |vy| < apexThreshold` (2.5) (apex float)
 - [ ] Gravity scale is 2.0x when `vy < 0` (fast fall)
-- [ ] Fall speed is clamped at `maxFallSpeed` (30 units/sec)
+- [ ] Fall speed is clamped at `maxFallSpeed` (20 units/sec)
 - [ ] Landing resets `didJump` and `varJumpTimer`
 - [ ] No double jump -- only one jump per ground contact (+ coyote window)
 

@@ -1,19 +1,19 @@
 # ADR-0004: Booster 2.0 Activation Pattern
 
 ## Status
-Accepted
+Accepted (Updated 2026-04-26: boostSpeed tuned from 19 to 11, wall nudge removed. Activation pattern unchanged.)
 
 ## Date
 2026-04-14
 
 ## Last Verified
-2026-04-19
+2026-04-26
 
 ## Decision Makers
 - Project lead (pz_ma)
 
 ## Summary
-Jetpack uses press-to-activate (not hold), 4 cardinal directions only. Direction is determined by the most recently pressed direction key (edge-detected). Velocity is set ONCE on activation to boostSpeed (19) in the chosen direction, with the perpendicular axis zeroed. This matches Cave Story's Booster 2.0 exactly.
+Jetpack uses press-to-activate (not hold), 4 cardinal directions only. Direction is determined by the most recently pressed direction key (edge-detected). Velocity is set ONCE on activation to boostSpeed (11) in the chosen direction, with the perpendicular axis zeroed. This matches Cave Story's Booster 2.0 exactly.
 
 ## Engine Compatibility
 
@@ -50,7 +50,7 @@ The jetpack is the core mechanic of Project Jetpack. We need to define exactly h
 ### Requirements
 - Must support up, down, left, right boost directions
 - Must use the most recently pressed direction key to resolve direction
-- Must set velocity to boostSpeed (19) in the chosen axis and zero the perpendicular axis
+- Must set velocity to boostSpeed (11) in the chosen axis and zero the perpendicular axis
 - Must integrate with the fuel system (ADR-0006) for duration limiting
 - Must integrate with post-boost velocity halving (ADR-0005) on release/fuel-empty
 
@@ -59,7 +59,7 @@ The jetpack is the core mechanic of Project Jetpack. We need to define exactly h
 The jetpack activates on a single key press (not hold). On the frame the boost key is pressed:
 
 1. **Direction resolution**: Read the most recently pressed cardinal direction key using edge detection (Input.GetKeyDown or equivalent). If no direction key is held, default to the direction the player is facing (horizontal).
-2. **Velocity set**: Set Rigidbody2D.linearVelocity to boostSpeed (19) in the resolved direction. Zero the perpendicular axis. This is a one-shot assignment, not an additive force.
+2. **Velocity set**: Set Rigidbody2D.linearVelocity to boostSpeed (11) in the resolved direction. Zero the perpendicular axis. This is a one-shot assignment, not an additive force.
 3. **Boost mode**: Record the current boost mode (1=horizontal, 2=up, 3=down) for use by ADR-0005's velocity halving on release.
 4. **Fuel consumption**: Begin draining fuel at the configured rate. Boost continues until fuel is empty or the player releases the boost key.
 5. **During boost**: No additional velocity is applied per-frame. The player travels at the set velocity until gravity (ADR-0003), collision, or boost termination modifies it.
@@ -74,7 +74,7 @@ The jetpack activates on a single key press (not hold). On the frame the boost k
         |
         v
 [Set linearVelocity]
-   resolvedDir * boostSpeed (19)
+   resolvedDir * boostSpeed (11)
    perpendicular axis = 0
         |
         v
@@ -96,7 +96,7 @@ The jetpack activates on a single key press (not hold). On the frame the boost k
 
 ```csharp
 // PlayerController (partial)
-private float boostSpeed = 19f;
+private float boostSpeed = 11f;
 private int boostMode; // 0=off, 1=horizontal, 2=up, 3=down
 
 void ActivateBoost(Vector2 direction)
@@ -153,7 +153,7 @@ int ResolveBoostMode(Vector2 dir)
   - **Mitigation**: Test with various collision scenarios; if needed, re-assert velocity on collision exit during active boost
 - **Risk**: Input buffering or frame-timing issues could cause the wrong direction to be read on activation
   - **Mitigation**: Use a direction key priority stack that always reflects the most recently pressed key, updated on both key-down and key-up events
-- **Risk**: boostSpeed value of 19 may need tuning as levels are built
+- **Risk**: boostSpeed value of 11 (tuned down from 19 during movement feel pass 2026-04-19)
   - **Mitigation**: Expose boostSpeed as a configurable constant; validate against level geometry during playtesting
 
 ## GDD Requirements Addressed
@@ -162,7 +162,7 @@ int ResolveBoostMode(Vector2 dir)
 |------------|-------------|--------------------------|
 | jetpack-system.md | Booster 2.0 activation must match Cave Story's press-to-activate model | Defines exact input pattern: edge-detected key press, not hold |
 | jetpack-system.md | 4 cardinal directions only | Restricts direction resolution to up/down/left/right |
-| jetpack-system.md | Velocity set once to boostSpeed on activation | One-shot linearVelocity assignment of 19 in chosen direction |
+| jetpack-system.md | Velocity set once to boostSpeed on activation | One-shot linearVelocity assignment of 11 in chosen direction |
 | jetpack-system.md | Perpendicular axis zeroed on activation | Explicitly zeros the axis perpendicular to boost direction |
 
 ## Performance Implications

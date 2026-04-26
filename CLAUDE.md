@@ -28,7 +28,8 @@ This project is built step-by-step, collaboratively. Each change should be small
 - **Deterministic air movement (DESIGN AXIOM)**: Gravity = 0 during ALL jetpack directions. The player must know exactly where they'll end up — no invisible gravity math during propelled states. Gravity also = 0 for a brief tunable window during secondary boost recoil. Gravity only applies during unpropelled airborne states (with Celeste-style apex float and fast fall modifiers).
 - **~1 second of fuel** (100 gas, 100/sec drain). Recharges on landing. Fuel parameters are configurable per chapter (shorter duration + mid-air pickups as a difficulty lever).
 - **Mode-specific halving on release/empty** (matches Cave Story exactly): horizontal boost → halve X velocity only. Upward boost → halve Y velocity only. Downward boost → NO halving.
-- **Wall nudge**: during horizontal boost, hitting a wall sets a small upward velocity (`wallNudgeSpeed`), allowing wall climbing — matches Booster 2.0's `ym = -0x100` on wall contact.
+- **No wall nudge**: Wall nudge was removed — it conflicted with the gravity=0 axiom (any upward velocity during horizontal boost persisted forever). Horizontal boost into a wall = stuck, fuel draining. Deterministic: teaches "don't waste fuel on walls."
+- **Jetpack blocked during dash**: Pressing jetpack while dashing is ignored. Prevents frozen-in-air bug (dash overrides velocity while jetpack disables gravity and movement).
 - **Boost modes** tracked via `boostMode`: 0=off, 1=horizontal, 2=up, 3=down.
 - **Jump and jetpack are mutually exclusive** — can't jump while jetpacking.
 - Gas system is separate: `JetpackGas.cs` with events. Fuel state is communicated via `JetpackParticles.cs` (visual) and `JetpackAudioFeedback.cs` (audio) — no HUD bar.
@@ -41,26 +42,45 @@ This project is built step-by-step, collaboratively. Each change should be small
 - **Wavedash** (implemented): Diagonal-down air dash + ground contact → horizontal speed at 1.2× dash speed (38.4 units/sec). Speed maintained for 0.12s (jump window to carry speed). Only triggers from airborne dashes. Core to fuel economy — fuel-free movement option for skilled players.
 
 ### Camera (RoomCamera.cs)
-- **Dual-mode**: Room-snap (locks to room center, smooth-step lerp transitions over 0.3s) or follow (fallback when no rooms exist).
-- **Room-snapping**: `SetRoom(Room)` for instant snap, `TransitionToRoom(Room)` for smooth lerp.
-- Orthographic size 8.5. Rooms should be 30×17 units to fill one screen at 16:9.
-- **Untested with real rooms** — code is written but no rooms have been successfully built in the scene yet. Needs Unity MCP or manual scene setup.
+- **Three modes**: Room-follow (follows player clamped to room bounds), room-snap transition (smooth-step lerp over 0.3s between rooms), or free-follow (fallback when no rooms exist).
+- **Room-following**: For rooms larger than the viewport, camera smoothly follows the player but clamps to room edges so nothing outside the room is shown. For single-screen rooms, this degrades to center-lock.
+- **Room transitions**: `SetRoom(Room)` for instant snap (clamped to player position), `TransitionToRoom(Room)` for smooth lerp.
+- Orthographic size 8.5. Rooms can be any size — camera adapts automatically.
 
 ### Animation (PlayerAnimator.cs)
 - Drives Animator parameters (IsRunning, IsGrounded, IsJetpacking, VelocityY) from PlayerController state.
 - Gracefully skips if no AnimatorController is assigned.
 - Sprite flipping via `transform.localScale.x *= -1` in PlayerMovement.
 
-### Level Generation (DEPRECATED)
-- `MovementTestLevel.cs` and `Chapter1Generator.cs` exist but are **deprecated**. Code-generated rooms caused invisible walls and broken transitions.
-- **Build rooms manually** in Unity editor using Tilemaps + placed GameObjects. See `design/levels/chapter1-room-designs.md` for layouts.
-- A Unity MCP server is needed for Claude to help with scene-level work.
+### Level Generation (DELETED)
+- `MovementTestLevel.cs` and `Chapter1Generator.cs` were **deleted** (2026-04-21). Code-generated rooms caused invisible walls and broken transitions.
+- **Build rooms using Tilemaps** via Unity editor or Coplay MCP `execute_script`. See `design/levels/chapter1-room-designs.md` for layouts.
 
 ### Room System (Room.cs, RoomManager.cs)
 - Rooms defined by `Room` MonoBehaviour with size, spawn point, and room ID. `Init()` method for runtime setup.
-- `RoomManager` singleton detects player crossing room boundaries via bounds checking in Update.
+- `RoomManager` singleton detects player crossing room boundaries via bounds checking in Update. Leave the `rooms` array empty — it auto-discovers via `FindObjectsByType<Room>` at Start.
 - Publishes `RoomEntered`, `RoomTransitionStarted`, `RoomTransitionCompleted` via Event Bus.
-- **Ready but untested** — needs real Room objects in the scene to function.
+- **4 tutorial rooms built and playable** in TestRoom.unity (ch1-room-01 through ch1-room-04, each 60×34 units).
+
+### Tilemap Setup (critical conventions)
+- Ground tiles use `Assets/Tiles/GroundTile.asset` (16×16 white sprite, Point filter, 16 PPU).
+- Persistent sprite for interactables: `Assets/Tiles/GroundSprite.png` (16×16, Point filter, 16 PPU).
+- Tilemap GameObjects: Grid parent → Walls child. Walls must be on **Layer 8 (Ground)**.
+- **Rigidbody2D must be Static**. Add `CompositeCollider2D` for performance.
+- **CompositeCollider2D geometryType MUST be Polygons** (not Outlines). Outlines creates edge colliders that break the dual-raycast ground check — rays starting just below the floor surface hit the bottom edge's downward normal, failing the `normal.y > 0.7` check.
+- TilemapCollider2D compositeOperation = Merge.
+
+### How to Build a Room (Manual Workflow)
+Currently rooms are built via editor scripts (`Assets/Editor/BuildTutorialRooms.cs`). To build a room manually in the Unity editor:
+1. **Create Room shell**: Empty GameObject at position (N×60, 0, 0). Add `Room` component, set `roomSize` to (60, 34), set `roomId`.
+2. **Add SpawnPoint**: Child empty, position where player should appear. Assign to Room's `spawnPoint`.
+3. **Add Grid > Walls**: Child `Grid` (cellSize 1,1,1) → grandchild `Walls` on **Layer 8 (Ground)**. Add components: `Tilemap`, `TilemapRenderer`, `TilemapCollider2D` (Merge), `Rigidbody2D` (Static), `CompositeCollider2D` (**Polygons**).
+4. **Paint tiles**: Open **Window > 2D > Tile Palette**, use `GroundTile.asset`. Paint walls, floors, platforms. Room spans tiles (-30,-17) to (29,16) relative to room center.
+5. **Add interactables**: Place hazards (Layer 10, `Hazard` component, trigger BoxCollider2D), pickups (Layer 11, `GasRechargePickup`/`DashRechargePickup`, trigger CircleCollider2D), fuel gates (`FuelGate` component, solid BoxCollider2D). All need `SpriteRenderer` with `GroundSprite.png`.
+6. **Carve openings**: Leave 6-tile gaps in left/right walls (y = -8 to -3) for room transitions.
+7. **Color coding**: orange-red (1,0.35,0) = hazards, cyan (0,0.9,1) = High gates + fuel pickups, deep red (1,0.15,0.15) = Low gates, magenta = dash pickups.
+
+**TODO**: This workflow needs to be streamlined with prefabs, a tile palette, and editor tools so rooms can be created without memorizing component stacks. See "What's NOT Done Yet > Level design".
 
 ### Gimmicks (Assets/Scripts/Gimmicks/)
 - **FuelGate.cs**: Barrier that opens when player's fuel matches required tier (High/Mid/Low). Color-matched to exhaust gradient (cyan/orange/red). Real-time response. `Init()` method for runtime setup. Event Bus integration.
@@ -110,6 +130,9 @@ The game uses **diegetic feedback** instead of HUD bars — the player reads fue
 - Manual edge detection for button presses (`IsPressed()` + previous frame tracking), not `WasPressedThisFrame()`.
 - All scripts that need input load the InputActionAsset from Resources and call Enable/Disable in OnEnable/OnDisable.
 - Ground/platform Rigidbody2D must be **Static** (not Dynamic), otherwise they fall.
+- Tilemap CompositeCollider2D must use **Polygons** geometry, not Outlines (see Tilemap Setup section).
+- Dash ammo does NOT recharge while `IsBoosting` — prevents upward ground dashes from giving a free second dash.
+- Jetpack CANNOT activate during dash (`isDashing` guard in `PlayerJetpack.Tick`). Dash and jetpack are mutually exclusive at activation time.
 - Scene file `groundLayer` mask may revert to 0 — code fallback in Awake forces it to layer 8.
 
 ## Current Tuning Values (updated 2026-04-19)
@@ -125,8 +148,8 @@ The game uses **diegetic feedback** instead of HUD bars — the player reads fue
 | jumpBufferTime | 0.1s | PlayerJump | |
 | boostSpeed (jetpack) | 11 | PlayerJetpack | ~1.83× moveSpeed (Booster 2.0 ratio) |
 | gasConsumptionRate | 100 | PlayerJetpack | ~1 second of boost |
-| wallNudgeSpeed | 2 | PlayerJetpack | Upward push when hitting wall during horizontal boost |
-| wallCheckDistance | 0.6 | PlayerJetpack | Raycast distance for wall detection |
+| ~~wallNudgeSpeed~~ | ~~2~~ | ~~PlayerJetpack~~ | REMOVED (2026-04-21) — conflicted with gravity=0 axiom |
+| ~~wallCheckDistance~~ | ~~0.6~~ | ~~PlayerJetpack~~ | REMOVED (2026-04-21) — was only used for wall nudge |
 | fallGravityMultiplier | 2.0 | PlayerGravity | Fast fall |
 | apexGravityMultiplier | 0.5 | PlayerGravity | Half-gravity at jump peak (requires holding jump) |
 | apexThreshold | 2.5 | PlayerGravity | Velocity below which apex kicks in |
@@ -186,7 +209,7 @@ The fusion: maneuvering IS fuel spending. Navigating a corridor drains fuel at a
 - **Fuel feedback**: Diegetic only (particles + audio). No persistent HUD bar. The fuel state is analog and readable by both player and environment.
 - **Gimmicks must interact with the fuel system** — no generic platformer gimmicks that ignore fuel.
 
-## Current State (updated 2026-04-20)
+## Current State (updated 2026-04-26)
 **Project phase: Pre-Production** (passed Technical Setup gate 2026-04-19).
 
 **Movement systems complete and tuned:**
@@ -199,26 +222,37 @@ The fusion: maneuvering IS fuel spending. Navigating a corridor drains fuel at a
 
 **Infrastructure:**
 - Event Bus implemented (ADR-0008) with 9 publishes across player systems
-- Fuel-state gates implemented (3 tiers: High/Mid/Low matching exhaust colors)
+- Fuel-state gates implemented (3 tiers: High/Mid/Low matching exhaust colors). Gates on Layer 8 (Ground) so player can stand on them, jump, and recharge fuel/dash.
 - Hazards + death/respawn working (Hazard.cs, PlayerRespawn.cs)
 - Fuel + dash pickups working (GasRechargePickup.cs, DashRechargePickup.cs)
-- Room camera + RoomManager rewritten for room-snapping with smooth transitions
+- Room camera follows player within large rooms, clamped to bounds, smooth transitions between rooms
 - Design direction document defines two-pillar identity (maneuvering + fuel timing)
 
-**Scene state:**
-- Old runtime generators (MovementTestLevel, Chapter1Generator) should be DELETED from scene
-- Scene needs to be rebuilt manually with Room GameObjects, Tilemaps, and placed objects
-- **A Unity MCP server is needed** to enable Claude Code to interact with the Unity editor directly (create GameObjects, set layers, inspect scene state). Without it, scene-level work requires manual steps.
+**Level Editor (built 2026-04-26):**
+- **Tile Palettes**: 5 Cave Story palettes (PrtCave, PrtMimi, PrtOside, PrtFall, PrtHell) + Interactables Palette. All in `Assets/Tiles/Palettes/`.
+- **672 tile assets** sliced from Cave Story spritesheets (16×16, Point filter, 16 PPU). Uses Unity 6 `ISpriteEditorDataProvider` API.
+- **SpawnTile system** (`Assets/Scripts/Tiles/`): Custom `TileBase` subclass for interactables. Paint them like tiles in the editor; `SpawnTileManager` spawns the real prefab and clears the placeholder at runtime.
+- **Interactable prefabs** (`Assets/Prefabs/Interactables/`): Hazard, FuelPickup, DashPickup, FuelGate_High/Mid/Low, SpawnPoint. Each has shape-coded placeholder sprites (spikes, circle, diamond, bars, arrow).
+- **Room creation tool**: `Project Jetpack > New Room` (Ctrl+Shift+R) — editor window that auto-positions rooms, creates full Room shell with Walls + Interactables tilemaps, paints border walls with transition openings.
+- **Two-tilemap workflow per room**: `Walls` (ground tiles, Layer 8, colliders) and `Interactables` (SpawnTiles, no colliders, SpawnTileManager). Active Target dropdown in Tile Palette selects which to paint on.
+- **Placeholder sprites** (`Assets/Sprites/Placeholders/`): Shape-coded 16×16 PNGs — spikes (hazard), circle (fuel), diamond (dash), bars (gate), arrow (spawn). Color-tinted per type.
+
+**Scene state (TestRoom.unity):**
+- **Coplay MCP installed and working** (`.mcp.json`, `Packages/Coplay/`). Claude Code can create/modify scene objects, run editor scripts, play/stop the game.
+- **Old MCP rooms deleted** (2026-04-26). Only user-created rooms remain.
+- **ch1-Room-01** (user-built, in progress): 60×34, PrtCave tiles for walls, hazard spikes, Low fuel gate. Tutorial design: safe space → fuel gate comprehension check → danger zone with spikes requiring jetpack+dash combo.
+- Room transitions via 6-tile openings in left/right walls (y = -8 to -3). RoomManager auto-detects boundary crossings.
+- Ground tile asset at `Assets/Tiles/GroundTile.asset` (white, 16px, Point filter). Cave Story tiles at `Assets/Tiles/PrtCave/` etc.
 
 Architecture documented: 5 GDDs + design-direction.md, 8 ADRs, master architecture doc, traceability matrix.
 
 ## What's NOT Done Yet
 
-### CRITICAL — Blocking level design
-- **Unity MCP integration** — needed for Claude Code to create/modify scene objects directly. Without it, all scene work requires manual Unity editor steps. Research and install a Unity MCP server.
-- **Scene cleanup** — delete old generated objects, set up clean scene with manually placed rooms
-- **Room transitions need testing** — RoomCamera and RoomManager code is written but untested with real rooms
-- **Chapter 1 room designs exist** (see `design/levels/chapter1-room-designs.md`) but no rooms are built yet
+### Level design
+- **Level editor workflow: DONE** (2026-04-26) — Tile palettes, SpawnTile system, Room creation tool, prefabs all working. Developer can create rooms entirely in Unity editor.
+- **Room transition polish** — transitions work but may need tuning (camera lerp, player input during transition)
+- **Gun swap zone + shootable target** — need `BoosterSwapZone.cs` and target interaction scripts
+- **ch1-Room-01 in progress** — user is hand-designing the tutorial level
 
 ### Gameplay features
 - **Wall slide** — not originally planned, worth considering
@@ -241,7 +275,18 @@ Architecture documented: 5 GDDs + design-direction.md, 8 ADRs, master architectu
 - Scene file `groundLayer` mask doesn't persist — code fallback runs every frame in CheckGround()
 - **SerializeField values in Inspector override script defaults** — after changing defaults in code, you MUST manually update Inspector values or right-click component → Reset
 - Architecture review flagged: dependency chain described differently across docs — needs reconciliation
-- **Code-generated rooms don't work reliably** — invisible walls, broken transitions. Build rooms manually in Unity editor or with Tilemaps instead.
+- **MCP execute_script + SerializedObject on existing components may not persist** — use MCP `set_property` tool to change serialized fields on existing components instead
+- **Ghost duplicate GameObjects can appear** when editor scripts create objects with the same name as existing ones. Always check `FindObjectsByType` count after scene modifications.
+- **Runtime-created sprites don't persist** — `Sprite.Create(new Texture2D(...))` in editor scripts produces sprites that are lost on scene save/reload. Always use `AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Tiles/GroundSprite.png")` for persistent sprite references. Use `drawMode = SpriteDrawMode.Tiled` with `sr.size` to scale the visual to match collider area.
+- **ASCII layout rows must be exactly 30 chars** — the room build scripts scale ASCII 2× to fill 60×34 rooms. Short rows cause the right border wall to shift inward by 2 tiles, creating protruding walls.
+
+## Level Editor Setup (2026-04-26)
+- **Cave Story tilesets sliced**: All 5 Prt sheets (Cave, Mimi, Oside, Fall, Hell) fixed to 16 PPU, Point filter, sliced into 16×16 grids via `ISpriteEditorDataProvider` (Unity 6 API — `TextureImporter.spritesheet` is deprecated and doesn't work).
+- **SpawnTile system**: Custom `TileBase` that shows a placeholder sprite in editor. `SpawnTileManager` (on Interactables tilemap) spawns prefabs in `Awake()` and clears tile visuals. SpawnTile itself has no runtime logic.
+- **Two-tilemap room structure**: Each room has `Walls` (ground, colliders) and `Interactables` (SpawnTiles, SpawnTileManager). Must select correct Active Target in Tile Palette.
+- **FuelGate prefabs on Layer 8**: Gates act as ground — player can stand, jump, and recharge fuel/dash on them.
+- **EditorUtility.SetDirty + SerializedObject on ScriptableObjects doesn't persist sprite references** — had to directly edit .asset YAML files to update GUIDs. The `set_property` MCP tool or YAML editing is more reliable for asset modifications.
+- **Old MCP rooms deleted**: MCP_Room_01 through MCP_Room_04 removed from TestRoom.unity. Only user-created rooms remain.
 
 ## Movement Fixes Applied (2026-04-19)
 - **Zero-friction physics material**: Applied at runtime to player collider + rigidbody. Prevents sticking to walls mid-air. Ground movement unaffected (velocity-based, not friction-based).
@@ -252,24 +297,25 @@ Architecture documented: 5 GDDs + design-direction.md, 8 ADRs, master architectu
 - **Dash momentum retain**: 25% velocity preserved after dash decay instead of hard stop.
 - **Dash input buffer**: 0.1s buffer matching jump buffer forgiveness.
 - **Dash ammo**: Reduced to 1 (from 3). Recharges on ground. `Recharge()` public method for mid-air pickups.
-- **Jetpack wall nudge**: Now fires once per boost (was every frame, causing infinite wall climbing).
+- **Jetpack wall nudge**: Now fires once per boost (was every frame, causing infinite wall climbing). **Later removed entirely** — see Fixes Applied 2026-04-21.
 - **Wavedash**: Diagonal-down dash near ground converts to horizontal speed (1.2× dash speed = 38.4). Speed maintained for 0.12s (jump window). Only triggers from airborne dashes (ground dashes are normal). PlayerMovement skips tick during wavedash window.
 
 ## Next Steps
-1. **Install Unity MCP server** — enables Claude Code to interact with Unity editor directly (create GameObjects, inspect scene, set properties). This is blocking all scene-level work.
-2. **Clean up scene** — delete old generated objects (MovementTestLevel, Chapter1Generator artifacts). Set up clean scene with manually placed rooms using Tilemaps.
-3. **Test room transitions** — verify RoomCamera + RoomManager work with real Room objects
-4. **Build Chapter 1 tutorial rooms** (15 rooms, patterns A/B/C/E). Designs at `design/levels/chapter1-room-designs.md`.
-5. **Sprint plan** — structure Vertical Slice work into sprints
+1. ~~**Level editor workflow**~~ ✓ (2026-04-26) — tile palettes, SpawnTile system, Room tool, prefabs
+2. **Finish ch1-Room-01 tutorial** — user is hand-designing; collaborate on layout
+3. **Wire up gun swap zone + shootable targets** — BoosterSwapZone.cs, target interaction system
+4. **Sprint plan** — structure Vertical Slice work into sprints
+5. **Landing feedback** — squash animation, dust particles, camera response
+6. **Basic SFX** — jump, land, dash, death sounds
 
 ## Long-Term Plan
 
 ### Phase 1 — Core Prototype (COMPLETE)
 **Track A:** ~~Refactor PlayerController~~ ✓ → ~~implement gravity axiom~~ ✓ → ~~movement feel tuning pass~~ ✓ → ~~wavedash~~ ✓ → ~~gun mode~~ ✓ → build tuning panel.
-**Track B:** ~~Event bus~~ ✓ → room-snapping camera + respawn → fuel-state gates → gimmick framework → chapter configuration.
+**Track B:** ~~Event bus~~ ✓ → ~~room-snapping camera~~ ✓ + respawn → fuel-state gates → gimmick framework → chapter configuration.
 
 ### Phase 2 — Chapter 1 (Tutorial)
-10-15 rooms teaching mechanics progressively. Room transition effects. Basic SFX. Death particles & screen shake. Title screen.
+4-room tutorial (compressed from original 15-room design). Room transition effects. Basic SFX. Death particles & screen shake. Title screen. Developer-facing level editing workflow.
 
 ### Phase 3 — Chapter 2+ (Gimmick Chapters)
 Each chapter introduces one new gimmick (wind turbines, gravity switches, closing platforms, gun mode puzzles, blind zones, etc.). 15-20 rooms per chapter. Booster mode can change mid-chapter or mid-room via BoosterSwapZone.
@@ -282,6 +328,17 @@ Replace all Cave Story sprites. Original character, tilesets, effects. Soundtrac
 
 ### Phase 6 — Release
 4-5 chapters (60-80 rooms). B-side hard mode. Settings menu.
+
+## Fixes Applied (2026-04-21)
+- **Coplay MCP installed**: `.mcp.json` configured with `coplay-mcp-server@latest`. Claude Code can now interact with Unity editor (create GameObjects, set properties, run scripts, play/stop game).
+- **RoomCamera follows within large rooms**: Camera smoothly follows player, clamped to room bounds. Degrades to center-lock for single-screen rooms. `ClampToRoom()` helper handles both SetRoom and UpdateRoomFollow.
+- **CompositeCollider2D Polygons fix**: Outlines geometry broke ground detection. Rays starting just below floor surface hit bottom edge (downward normal), failing `normal.y > 0.7`. Switching to Polygons makes the collider solid.
+- **Dash ammo recharge guard**: Added `!IsBoosting` to ground recharge check in SecondaryBooster.Update(). Prevents upward ground dashes from instantly refilling ammo before the player leaves the floor.
+- **Room tilemap setup**: Created `Assets/Tiles/GroundTile.asset` and `GroundSprite.png` (16×16, Point filter, 16 PPU). Two rooms built via editor scripts with proper Grid → Tilemap → TilemapCollider2D → CompositeCollider2D (Polygons, Static Rigidbody2D) on Layer 8.
+- **Room exit openings**: Punched 3-tile-tall openings in connecting walls (rows 18-20) so player can walk between rooms.
+- **Jetpack blocked during dash**: Added `isDashing` parameter to `PlayerJetpack.Tick()`. PlayerController passes `secondaryBooster.IsBoosting`. Prevents frozen-in-air bug where dash overrides velocity while jetpack disables gravity and movement.
+- **Wall nudge removed**: Removed wall nudge from PlayerJetpack entirely. With gravity=0 during horizontal boost, any upward velocity from the nudge persisted forever, causing infinite wall climbing. Now horizontal boost into a wall = zero velocity, fuel draining.
+- **Rooms populated with hazards and pickups**: Room 1 has 5 spike strips + fuel/dash pickups. Room 2 has spike floor + 3 fuel pickups + 2 dash pickups. All created via editor script with proper layers and components.
 
 ## Multi-Session Protocol
 When running parallel Claude Code sessions, follow the file ownership rules in the design spec:

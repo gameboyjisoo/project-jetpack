@@ -2,7 +2,7 @@
 
 > **Status**: Approved
 > **Created**: 2026-04-07
-> **Last Updated**: 2026-04-19
+> **Last Updated**: 2026-04-26
 
 ## Elevator Pitch
 
@@ -31,7 +31,7 @@ Each chapter introduces one new gimmick (wind turbines, gravity switches, closin
 
 | Game | What We Borrow | What We Don't |
 |------|---------------|---------------|
-| **Cave Story** | Booster 2.0 jetpack feel, directional boost, fuel limit, wall nudge | Story/RPG elements, weapon system |
+| **Cave Story** | Booster 2.0 jetpack feel, directional boost, fuel limit, end-boost velocity halving | Story/RPG elements, weapon system |
 | **Celeste** | Room-based stages, ground movement feel, variable jump, coyote time, speedrun culture | Dash mechanic (replaced by jetpack), narrative focus |
 
 ## Target Audience
@@ -44,12 +44,28 @@ Each chapter introduces one new gimmick (wind turbines, gravity switches, closin
 
 | Phase | Content | Milestone |
 |-------|---------|-----------|
-| Phase 1 | Core prototype — movement + jetpack + test room | Current |
-| Phase 2 | Chapter 1 (Tutorial) — 10-15 rooms, SFX, death/respawn, title screen | Vertical Slice |
+| Phase 1 | Core prototype — movement + jetpack + test room | Complete |
+| Phase 2 | Chapter 1 (Tutorial) — 4 rooms, SFX, death/respawn, level editor workflow, title screen | Vertical Slice |
 | Phase 3 | Chapter 2+ — 15-20 rooms per chapter, gimmick framework | Alpha |
 | Phase 4 | Speedrun layer — momentum tech, wavedash, timer | Beta |
 | Phase 5 | Polish — original art, soundtrack (replace Cave Story placeholders) | Polish |
 | Phase 6 | Release — 4-5 chapters (60-80 rooms), B-side hard mode, settings | Release |
+
+## Level Creation
+
+Levels are built using Unity's Tilemap system. Each room is a 60×34 unit area (at 16 PPU = 960×544 pixels) containing:
+- **Tilemap** (Grid → Walls child) on Layer 8 with CompositeCollider2D (Polygons)
+- **Interactables** as child GameObjects: hazards (Layer 10), pickups (Layer 11), fuel gates, swap zones
+
+**Current workflow**: Rooms are defined as ASCII art (30×14 chars, scaled 2×) in C# editor scripts and built via Coplay MCP. This works for Claude Code but is not developer-friendly.
+
+**Target workflow** (not yet built): The developer should be able to create rooms directly in the Unity editor by:
+1. Painting tiles using a **Tile Palette** with labeled tile types
+2. Dragging **prefabs** for hazards, pickups, gates, and swap zones
+3. Using an **editor tool** that creates properly-configured Room shells (Room component + Grid + Tilemap + colliders) in one click
+4. Duplicating a **room template prefab** and repositioning it
+
+This is a high priority for Phase 2 — the developer needs to iterate on level designs without writing code.
 
 ## Unique Selling Point
 

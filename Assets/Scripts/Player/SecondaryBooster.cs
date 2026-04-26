@@ -133,8 +133,9 @@ public class SecondaryBooster : MonoBehaviour
 
         cooldownTimer -= Time.deltaTime;
 
-        // Recharge ammo on ground (dash mode only)
-        if (currentMode == SecondaryMode.Dash && player.IsGrounded && currentAmmo < maxAmmo)
+        // Recharge ammo on ground (dash mode only) — skip during active dash to prevent
+        // upward ground dashes from instantly refilling before the player leaves the floor
+        if (currentMode == SecondaryMode.Dash && player.IsGrounded && currentAmmo < maxAmmo && !IsBoosting)
         {
             currentAmmo = maxAmmo;
             OnAmmoChanged?.Invoke(currentAmmo);

@@ -1,7 +1,7 @@
 # Project Jetpack -- Master Architecture Document
 
-> **Version**: 1.0
-> **Date**: 2026-04-19
+> **Version**: 1.1
+> **Date**: 2026-04-26
 > **Engine**: Unity 6 (6000.0.34f1)
 > **Language**: C#
 > **Status**: Living document -- updated as ADRs are added or revised
@@ -28,7 +28,7 @@ Project Jetpack is a 2D pixel art platformer combining **Cave Story's Booster 2.
 
 > **4-directional jetpack + chapter gimmicks**
 
-The player traverses fixed-screen rooms using a toolkit of movement mechanics: snappy ground movement, a variable-height jump, a 4-cardinal-direction jetpack with committed trajectories, and a secondary booster with recoil-based propulsion. Each chapter introduces a new environmental gimmick that interacts with these mechanics.
+The player traverses fixed-screen rooms using a toolkit of movement mechanics: snappy ground movement, a variable-height jump, a 4-cardinal-direction jetpack with committed trajectories, and a secondary booster with two swappable modes (dash and gun). Each chapter introduces a new environmental gimmick that interacts with these mechanics.
 
 ### Design Pillars
 
@@ -137,9 +137,9 @@ All player behavior lives on a single GameObject. Components follow the single-r
 | **PlayerController** | `PlayerController.cs` | Orchestrator: input reading, ground check, FixedUpdate pipeline dispatch. Single public API for external systems. |
 | **PlayerMovement** | `PlayerMovement.cs` | Ground movement: Celeste-style `MoveTowards` accel/decel, air control multiplier (0.65), sprite flip |
 | **PlayerJump** | `PlayerJump.cs` | Jump: coyote time (0.1s), jump buffer (0.1s), variable-height hold (0.2s), horizontal boost (2.5), apex gravity |
-| **PlayerJetpack** | `PlayerJetpack.cs` | Jetpack: Booster 2.0 activation (4-cardinal, press-to-activate), fuel drain, wall nudge, end-boost velocity halving |
+| **PlayerJetpack** | `PlayerJetpack.cs` | Jetpack: Booster 2.0 activation (4-cardinal, press-to-activate), fuel drain, end-boost velocity halving. Jetpack blocked during active dash. |
 | **PlayerGravity** | `PlayerGravity.cs` | Gravity: dynamic scaling, fast fall (2x), apex float (0.5x), gravity suppression during propelled states |
-| **SecondaryBooster** | `SecondaryBooster.cs` | Secondary boost: 8-direction dash, 3 ammo w/ ground recharge, cooldown, recoil, optional projectile. Delegates to `IBoosterMode`. |
+| **SecondaryBooster** | `SecondaryBooster.cs` | Secondary boost: swappable `IBoosterMode` host. Dash mode (1 ammo, 8-direction fixed-distance burst, recharges on ground). Gun mode (free, no ammo, aimed projectile, no movement effect on player). `SwapMode(SecondaryMode)` public method. |
 | **JetpackGas** | `JetpackGas.cs` | Fuel system: 100 gas, 100/sec drain, recharge on landing, events for empty/recharge |
 | **JetpackParticles** | `JetpackParticles.cs` | Visual feedback: exhaust color gradient (cyan > orange > red), sputter below 20% |
 | **JetpackAudioFeedback** | `JetpackAudioFeedback.cs` | Audio feedback: burst SFX interval (0.08s-0.3s), pitch (1.0-0.55), jitter below 30%, dry-fire on empty |
@@ -244,7 +244,7 @@ JetpackGas.currentGas
   Resolve direction (most recent cardinal key)
         |
         v
-  Set linearVelocity = direction * 19
+  Set linearVelocity = direction * 11
   Zero perpendicular axis
   Record boostMode (1=horiz, 2=up, 3=down)
   Suppress gravity (set to 0)    <-- ADR-0003 axiom
@@ -345,7 +345,7 @@ ADR-0006 (Fuel Feedback)  -- independent, reads fuel state
 
 ### ADR-0004: Booster 2.0 Activation Pattern
 
-**Decision**: Press-to-activate (not hold). 4 cardinal directions. Direction resolved from most recently pressed key (edge-detected). Velocity set ONCE to 19 units/sec in chosen direction, perpendicular axis zeroed. No per-frame velocity writes during boost.
+**Decision**: Press-to-activate (not hold). 4 cardinal directions. Direction resolved from most recently pressed key (edge-detected). Velocity set ONCE to 11 units/sec in chosen direction, perpendicular axis zeroed. No per-frame velocity writes during boost.
 
 **Why**: Matches Cave Story's Booster 2.0 exactly. The one-shot velocity creates a "committed trajectory" feel -- boost direction is a meaningful decision. Per-frame application would lose the Cave Story DNA.
 
@@ -353,7 +353,7 @@ ADR-0006 (Fuel Feedback)  -- independent, reads fuel state
 
 ### ADR-0005: Post-Boost Velocity Halving
 
-**Decision**: On boost termination, apply mode-specific halving: horizontal -> halve X, upward -> halve Y, downward -> no halving. Wall contact during horizontal boost applies wallNudgeSpeed (2) upward.
+**Decision**: On boost termination, apply mode-specific halving: horizontal -> halve X, upward -> halve Y, downward -> no halving. Wall nudge (wallNudgeSpeed upward on horizontal wall contact) was removed -- conflicts with gravity=0 axiom.
 
 **Why**: Cave Story's distinct post-boost arcs per direction are what make the movement satisfying to master. Uniform halving homogenizes the feel. No halving on downward makes it the most committed direction.
 
@@ -412,9 +412,9 @@ The player's movement mechanics. These define how the game feels.
 | **Gravity** | ADR-0003 | Gravity = 0 during ALL propelled states. No exceptions. |
 | **Movement** | ADR-0001 | Celeste-style `MoveTowards`. Disabled during boost. |
 | **Jump** | ADR-0001 | Variable height, coyote time, buffer, apex float. Mutually exclusive with jetpack. |
-| **Jetpack** | ADR-0004 | Press-to-activate, 4 cardinal, velocity set once (19), perpendicular zeroed. |
-| **Secondary Booster** | ADR-0001 | 8-direction dash, 3 ammo, recoil. Delegates to `IBoosterMode`. |
-| **Event Bus** | Planned | Static pub/sub (`GameEventBus`). Decouples gimmicks from player. |
+| **Jetpack** | ADR-0004 | Press-to-activate, 4 cardinal, velocity set once (11), perpendicular zeroed. Wall nudge removed (see ADR-0005). |
+| **Secondary Booster** | ADR-0001 | Dash mode: 8-direction fixed-distance burst, 1 ammo, recharges on ground. Gun mode: free aimed projectile, no movement effect. Delegates to `IBoosterMode`. |
+| **Event Bus** | Implemented | Static pub/sub (`GameEventBus`). 9 publishes wired. Decouples gimmicks from player. |
 
 ### Feature Layer
 
@@ -422,10 +422,12 @@ Level infrastructure and environmental mechanics. Communicates with Core via eve
 
 | System | Status | Notes |
 |--------|--------|-------|
-| **Camera** | Follow mode active, room-snap planned | Celeste-style one-screen-per-room |
-| **Room System** | Implemented, inactive | `Room.cs`, `RoomManager.cs` |
-| **Respawn** | Planned | Hazard layer (10) triggers instant respawn to room spawn point |
-| **Hazards** | Planned | Trigger colliders on layer 10 |
+| **Camera** | Implemented, tested | Room-snap active with smooth lerp transitions. 4-room tutorial built (ch1-room-01 through ch1-room-04). |
+| **Room System** | Implemented, tested | `Room.cs`, `RoomManager.cs`. Rooms built via Tilemaps in Unity Editor. `MovementTestLevel.cs` and `Chapter1Generator.cs` deleted 2026-04-21. |
+| **Respawn** | Implemented | `Hazard.cs` + `PlayerRespawn.cs`. Death → fade → spawn at room spawn point → invincibility flash. |
+| **Hazards** | Implemented | `Hazard.cs` trigger on layer 10. Kill on contact. |
+| **Fuel Gate** | Implemented | `FuelGate.cs`. Opens when player fuel matches tier (High/Mid/Low). Color-matched to exhaust gradient. |
+| **Pickups** | Implemented | `GasRechargePickup.cs` (fuel), `DashRechargePickup.cs` (dash ammo). Respawn on player landing. |
 | **Gimmick Framework** | Planned | `IGimmick` interface, `GimmickZone` trigger volumes |
 | **Chapter Config** | Planned | Per-chapter rules as ScriptableObject (booster mode, fuel limits) |
 | **Booster Mode Swapping** | Planned | Chapter-level, room-level, or mid-room via `BoosterSwapZone` |
@@ -438,7 +440,7 @@ Visual and audio feedback systems. Read-only consumers of player state.
 |--------|--------|-------|
 | **Animation** | Placeholder | `PlayerAnimator.cs` drives params; no controller connected yet |
 | **Fuel Feedback** | Implemented | Particles + audio. ADR-0006. |
-| **Momentum/Wavedash** | Planned | Diagonal-down recoil near ground -> horizontal speed |
+| **Wavedash** | Implemented | Diagonal-down air dash + ground contact converts to horizontal speed at 1.2x dash speed (38.4 units/sec). |
 | **Runtime Tuning Panel** | Planned | IMGUI debug overlay (F1 toggle) for live parameter adjustment |
 
 ---
@@ -469,25 +471,31 @@ Visual and audio feedback systems. Read-only consumers of player state.
 | Project gravity | -20 | Snappier than default -9.81 |
 | Ground/platform RB type | Static | Dynamic would fall |
 
-### Tuning Values (current baseline)
+### Tuning Values (current baseline, updated 2026-04-26)
 
-| Parameter | Value | Source |
-|-----------|-------|--------|
-| moveSpeed | 10 | Celeste-level |
-| groundAccel / groundDecel | 120 / 120 | Near-instant |
-| airMult | 0.65 | Celeste's single air control multiplier |
-| jumpForce | 18 | Tall, expressive jumps |
-| varJumpTime | 0.2s | 12 frames at 60fps |
-| jumpHBoost | 2.5 | Horizontal boost on jump |
-| coyoteTime | 0.1s | Celeste's JumpGraceTime |
-| jumpBufferTime | 0.1s | |
-| boostSpeed | 19 | ~1.9x moveSpeed (Cave Story ratio) |
-| gasConsumptionRate | 100 | ~1 second of boost |
-| wallNudgeSpeed | 2 | Upward push during horizontal wall contact |
-| fallGravityMultiplier | 2.0 | Fast fall |
-| apexGravityMultiplier | 0.5 | Half gravity at jump peak |
-| apexThreshold | 4.0 units/sec | Velocity below which apex kicks in |
-| maxFallSpeed | 30 | |
+| Parameter | Value | Component | Notes |
+|-----------|-------|-----------|-------|
+| moveSpeed | 6 | PlayerMovement | Reduced from 10 for tighter feel |
+| groundAccel / groundDecel | 120 / 120 | PlayerMovement | Near-instant, Celeste-level |
+| airMult | 0.65 | PlayerMovement | Celeste's single air control multiplier |
+| jumpForce | 8 | PlayerJump | ~3.5x character height full hold, ~1.6x short tap |
+| varJumpTime | 0.2s | PlayerJump | 12 frames at 60fps |
+| jumpHBoost | 2.4 | PlayerJump | 40% of moveSpeed (Celeste ratio) |
+| coyoteTime | 0.1s | PlayerJump | Celeste's JumpGraceTime |
+| jumpBufferTime | 0.1s | PlayerJump | |
+| boostSpeed (jetpack) | 11 | PlayerJetpack | ~1.83x moveSpeed (Booster 2.0 ratio) |
+| gasConsumptionRate | 100 | PlayerJetpack | ~1 second of boost |
+| ~~wallNudgeSpeed~~ | ~~2~~ | ~~PlayerJetpack~~ | REMOVED (2026-04-21) -- conflicts with gravity=0 axiom (ADR-0003) |
+| fallGravityMultiplier | 2.0 | PlayerGravity | Fast fall |
+| apexGravityMultiplier | 0.5 | PlayerGravity | Half gravity at jump peak |
+| apexThreshold | 2.5 | PlayerGravity | Velocity below which apex kicks in |
+| maxFallSpeed | 20 | PlayerGravity | Reduced from 30 for proportional feel |
+| boostSpeed (dash) | 32 | SecondaryBooster | Covers ~4.8 tiles in 0.15s |
+| boostDuration (dash) | 0.15s | SecondaryBooster | Celeste-length dash |
+| maxAmmo (dash) | 1 | SecondaryBooster | Single dash, recharges on ground |
+| wavedashSpeedMultiplier | 1.2 | SecondaryBooster | 1.2x dash speed = 38.4 units/sec |
+| wavedashKeepTime | 0.12s | SecondaryBooster | Speed maintained for 0.12s after wavedash |
+| Project gravity | -20 | Physics2D settings | |
 
 These values will migrate to a `PlayerTuning` ScriptableObject (centralized, runtime-tunable).
 
@@ -505,13 +513,13 @@ Development proceeds on two parallel tracks with strict file ownership to preven
 Focus: Refactor PlayerController into focused components, implement gravity axiom, build runtime tuning panel, nail movement feel, add momentum/wavedash system, booster mode framework.
 
 Key deliverables:
-- `PlayerTuning.cs` -- ScriptableObject centralizing ALL tuning values
-- `GravityHandler.cs` -- Priority-based gravity override system
-- `PlayerStateMachine.cs` -- Pure-logic state tracking
-- `PlayerCollision.cs` -- Extracted ground/wall checks
-- `MomentumHandler.cs` -- Wavedash and momentum conservation
-- `TuningPanel.cs` -- IMGUI debug overlay
-- `IBoosterMode` / `RecoilBooster` / `GunBooster` -- Swappable secondary booster modes
+- `PlayerTuning.cs` -- ScriptableObject centralizing ALL tuning values (planned)
+- `GravityHandler.cs` -- Priority-based gravity override system (planned)
+- `PlayerStateMachine.cs` -- Pure-logic state tracking (planned)
+- `PlayerCollision.cs` -- Extracted ground/wall checks (planned)
+- `MomentumHandler.cs` -- Wavedash and momentum conservation (planned)
+- `TuningPanel.cs` -- IMGUI debug overlay (planned)
+- `IBoosterMode` / Dash / Gun modes -- Swappable secondary booster modes. Dash (1 ammo burst) and Gun (free, aimed projectile) are **implemented** in `SecondaryBooster.cs` via `SecondaryMode` enum.
 
 ### Track B -- Infrastructure
 
@@ -521,13 +529,16 @@ Key deliverables:
 Focus: Event bus, room-snapping camera, gimmick framework, chapter configuration, death/respawn.
 
 Key deliverables:
-- `GameEventBus.cs` -- Central pub/sub system
-- `PlayerAPI.cs` -- Read-only player state facade for Track B
-- `RoomCamera.cs` -- Celeste-style room-snap with follow-mode fallback
-- `DeathHandler.cs` -- Hazard collision -> instant respawn
-- `ChapterConfig.cs` -- Per-chapter rules ScriptableObject
-- `IGimmick` / `GimmickZone` -- Gimmick framework
-- Gimmicks: WindTurbine, GravitySwitch, ClosingPlatform, FuelPickup, SwitchTarget, BoosterSwapZone
+- `GameEventBus.cs` -- Central pub/sub system (**implemented**, 9 publishes wired)
+- `PlayerAPI.cs` -- Read-only player state facade for Track B (planned)
+- `RoomCamera.cs` -- Celeste-style room-snap with follow-mode fallback (**implemented**)
+- `Room.cs` / `RoomManager.cs` -- Room definition and transitions (**implemented**). Rooms built via Tilemaps. `MovementTestLevel.cs` and `Chapter1Generator.cs` deleted.
+- `Hazard.cs` / `PlayerRespawn.cs` -- Hazard collision -> death -> respawn (**implemented**)
+- `FuelGate.cs` -- Fuel-threshold barrier, 3 tiers (**implemented**)
+- `GasRechargePickup.cs` / `DashRechargePickup.cs` -- Mid-air pickups (**implemented**)
+- `ChapterConfig.cs` -- Per-chapter rules ScriptableObject (planned)
+- `IGimmick` / `GimmickZone` -- Gimmick framework (planned)
+- Gimmicks: WindTurbine, GravitySwitch, ClosingPlatform, SwitchTarget, BoosterSwapZone (planned)
 
 ### Cross-Track Contract
 
@@ -542,15 +553,15 @@ Track B **never** directly modifies player velocity or state. All player-affecti
 
 ### Architecture
 
-- **Event bus scope**: Should `GameEventBus` be static (current plan) or instance-based? Static is simpler but harder to test and leaks across scenes. Needs resolution before Track B Task 1.
+- **PlayerTuning ScriptableObject**: All tuning values currently live as `[SerializeField]` fields on individual scripts. Migration to a shared `PlayerTuning` ScriptableObject is planned but not yet done. The `PlayerTuning.cs` asset defined in Track A plan is not yet created.
 - **PlayerTuning hot-reload**: The ScriptableObject approach modifies the asset at runtime in the editor. Should runtime tuning use a cloned instance to avoid persisting debug values? Needs resolution before Track A Task 2.
 - **SecondaryBooster pipeline integration**: SecondaryBooster currently runs its own `FixedUpdate` independently of the orchestrator pipeline (acknowledged in ADR-0001 as tech debt). When should this be folded into the main pipeline?
 
 ### Design
 
-- **Momentum preservation ratio**: What percentage of air velocity should convert to ground speed on landing? `momentumConservationRatio` is set to 0.5 but untested.
-- **Wavedash skill ceiling**: How fast should chained wavedashes let the player go? `maxWavedashSpeed = 25` is a guess. Needs playtesting.
-- **Fuel pickup respawn**: Should mid-air fuel pickups respawn on a timer (current plan: 3s) or only on room re-entry?
+- **Remaining Chapter 1 rooms**: 4-room tutorial is built (rooms 1-4). Full Chapter 1 is 10-15 rooms (designs at `design/levels/chapter1-room-designs.md`). Room count compressed from original 15-room plan.
+- **Landing feedback**: Squash animation, dust particles, camera response not yet implemented.
+- **Basic SFX**: Jump, land, dash, death sounds not yet implemented.
 - **Accessibility**: When should `GasMeterUI.cs` be reactivated as an accessibility toggle? What other accessibility options are needed?
 
 ### Systems Not Yet Designed
@@ -579,10 +590,7 @@ Assets/Scripts/
     PlayerAnimator.cs         -- Animation driver
     JetpackParticles.cs       -- Fuel VFX
     JetpackAudioFeedback.cs   -- Fuel SFX
-    Boosters/
-      IBoosterMode.cs         -- Mode interface (planned)
-      RecoilBooster.cs        -- Default mode (planned)
-      GunBooster.cs           -- Aimed projectile mode (planned)
+    Projectile.cs             -- Gun mode projectile (moves forward, destroys on Ground contact)
     PlayerTuning.cs           -- Tuning ScriptableObject (planned)
     PlayerCollision.cs        -- Ground/wall checks (planned)
     PlayerStateMachine.cs     -- State tracking (planned)
@@ -592,8 +600,8 @@ Assets/Scripts/
     GasMeterUI.cs             -- Legacy HUD bar (intentionally unwired)
     TuningPanel.cs            -- Debug overlay (planned)
   Core/
-    GameEventBus.cs           -- Pub/sub system (planned)
-    GameEvent.cs              -- Event enum (planned)
+    GameEventBus.cs           -- Pub/sub system (implemented, 9 publishes)
+    GameEvent.cs              -- Event enum (implemented)
     PlayerAPI.cs              -- Read-only facade (planned)
     BoosterModeType.cs        -- Shared enum (planned)
   Camera/
@@ -601,17 +609,22 @@ Assets/Scripts/
     ScreenEffects.cs          -- Visual event subscriber (planned)
   Level/
     Room.cs                   -- Room definition
-    RoomManager.cs            -- Room transitions
-    DeathHandler.cs           -- Hazard -> respawn (planned)
+    RoomManager.cs            -- Room transitions (auto-discovers rooms via FindObjectsByType)
+    -- MovementTestLevel.cs DELETED (2026-04-21)
+    -- Chapter1Generator.cs DELETED (2026-04-21)
     ChapterConfig.cs          -- Per-chapter rules (planned)
     ChapterLoader.cs          -- Applies chapter config (planned)
   Gimmicks/
+    FuelGate.cs               -- Fuel-threshold barrier (implemented, 3 tiers)
+    GasRechargePickup.cs      -- Mid-air fuel pickup (implemented)
+    DashRechargePickup.cs     -- Mid-air dash ammo pickup (implemented)
+    Hazard.cs                 -- Kill on trigger contact (implemented, layer 10)
+    PlayerRespawn.cs          -- Death -> fade -> respawn (implemented)
     IGimmick.cs               -- Gimmick interface (planned)
     GimmickZone.cs            -- Trigger volume base (planned)
     WindTurbine.cs            -- Interval force (planned)
     GravitySwitch.cs          -- Gravity override (planned)
     ClosingPlatform.cs        -- Timed open/close (planned)
-    FuelPickup.cs             -- Mid-air refill (planned)
     SwitchTarget.cs           -- Shootable trigger (planned)
     BoosterSwapZone.cs        -- Mode swap zone (planned)
 
@@ -642,4 +655,4 @@ ADR-0007 Physics Layers (foundation, no deps)
 ADR-0006 Diegetic Fuel Feedback (independent, reads fuel state)
 ```
 
-All ADRs are **Accepted** as of 2026-04-19. No conflicts detected. See [architecture-traceability.md](architecture-traceability.md) for full requirement-to-ADR mapping.
+All ADRs are **Accepted** as of 2026-04-19. No conflicts detected. ADR-0004 tuning updated 2026-04-26 (boostSpeed 19 → 11). ADR-0005 wall nudge documented as removed 2026-04-21. See [architecture-traceability.md](architecture-traceability.md) for full requirement-to-ADR mapping.

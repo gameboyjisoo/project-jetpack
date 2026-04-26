@@ -1,10 +1,45 @@
 # Chapter 1: Tutorial Room Designs
 
-> **Status**: Draft
-> **Created**: 2026-04-20
-> **Rooms**: 15 (planned)
-> **Room Size**: 30×17 units (one screen at ortho 8.5, 16:9)
+> **Status**: Built (4 rooms, compressed from original 15-room draft)
+> **Updated**: 2026-04-26
+> **Rooms**: 4 (built), original 15-room designs preserved below for reference
+> **Room Size**: 60×34 units (ASCII designed at 30×14, scaled 2×)
 > **Tile Size**: 1×1 units (16px at 16 PPU)
+
+> **Note (2026-04-26)**: Tutorial compressed from 15 rooms to 4. Each room teaches multiple mechanics. The original 15 designs are preserved below but are NOT built — only the 4 compressed rooms exist in the scene. Build scripts at `Assets/Editor/BuildTutorialRooms.cs`.
+
+## Built Rooms (4-room compressed tutorial)
+
+### Room 1: "Move and Fly"
+**Teaches**: Walk, jump, first spikes, jetpack (forced by tall wall), fuel awareness (mid-point landing)
+- Left section: flat ground → staircase platforms → spike gap (first death)
+- Middle: tall wall that can't be jumped → forces jetpack discovery
+- Right section: wide spike pit → mid-point platform to refuel → exit
+
+### Room 2: "Dash and Survive"
+**Teaches**: Dash exists (small gaps), dash+jetpack combo (wide gap), dash pickups
+- Small spike gaps dashable without jetpack → teaches dash
+- Wide spike gap needs jetpack to cross + dash for precise landing
+- Fuel and dash pickups placed strategically
+
+### Room 3: "The Fork"
+**Teaches**: Fuel gates (High cyan + Low red), fuel-state routing
+- Spawn on center platform, two paths diverge
+- Left: High fuel gate (>50%) — easier path if you conserved fuel
+- Right: Low fuel gate (<20%) — harder path if you burned fuel
+- Both paths lead to exit at top center
+- **THIS is where the game's identity clicks**
+
+### Room 4: "Graduation"
+**Teaches**: Everything combined + gun mode swap + shootable target
+- Fuel fork (High left, Low right)
+- Gun swap zone (green, visual placeholder) + target (yellow, visual placeholder)
+- Hazards, fuel pickup, dash pickup
+- Multiple valid solutions depending on skill
+
+---
+
+## Original 15-Room Designs (REFERENCE ONLY — not built)
 
 ## Room Layout Legend
 

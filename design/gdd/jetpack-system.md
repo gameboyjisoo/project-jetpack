@@ -5,7 +5,7 @@
 > **Priority**: MVP
 > **Source Files**: `PlayerJetpack.cs`, `JetpackGas.cs`
 > **Created**: 2026-04-19
-> **Last Updated**: 2026-04-19
+> **Last Updated**: 2026-04-21
 
 ---
 
@@ -28,6 +28,7 @@ The player should feel like they are piloting a volatile, jury-rigged jetpack �
 - The jetpack button must be **newly pressed** while the player is airborne. This is edge-detected (not hold-to-start). Pressing jetpack while grounded does nothing.
 - The player must have fuel remaining (`JetpackGas.HasGas == true`).
 - The player must not already be jetpacking.
+- The player must **not be in an active dash** (secondary booster). Jetpack is blocked during an active dash. Reason: dash overrides velocity while jetpack disables gravity — simultaneous activation freezes the player in mid-air.
 - Jump and jetpack are **mutually exclusive** — activating the jetpack clears any active jump state.
 
 ### 3.2 Direction Selection
@@ -81,12 +82,15 @@ Rationale: Downward boost already feeds into gravity's direction, so halving wou
 
 When the player has non-jump upward velocity after a boost ends (i.e., the upward boost was halved but still has positive Y velocity), **fast fall gravity (2x multiplier)** applies immediately. This prevents floaty post-boost arcs and makes the end of an upward boost feel decisive — you rise, you stop, you fall.
 
-### 3.9 Wall Nudge
+### 3.9 Wall Nudge — REMOVED
 
-- During a **horizontal boost only** (boostMode == 1), if the player contacts a wall in the boost direction, a small upward velocity (`wallNudgeSpeed`) is applied.
-- This allows the player to "climb" walls by repeatedly boosting horizontally into them — the nudge bumps them up slightly each frame of contact.
-- Wall detection uses a raycast from the player's center in the horizontal boost direction, with length `wallCheckDistance`.
-- This matches Booster 2.0's `ym = -0x100` behavior on wall contact.
+> **REMOVED as of 2026-04-21.** Wall nudge has been removed from the game.
+>
+> **Reason:** Fundamental conflict with the gravity = 0 design axiom (Section 3.4). During a horizontal boost, gravity is suppressed entirely. Any upward velocity applied by the wall nudge persisted indefinitely while boosting, causing uncontrolled infinite wall climbing. There was no clean fix — the root cause is architectural: gravity suppression and a velocity override cannot coexist safely. The mechanic is omitted rather than patched.
+>
+> The wall-climbing rhythm described in the Feel Reference (Section 9) is no longer a design target. Vertical traversal is handled via the upward boost direction.
+>
+> ~~During a **horizontal boost only** (boostMode == 1), if the player contacts a wall in the boost direction, a small upward velocity (`wallNudgeSpeed`) is applied. Wall detection uses a raycast from the player's center in the horizontal boost direction, with length `wallCheckDistance`. This matches Booster 2.0's `ym = -0x100` behavior on wall contact.~~
 
 ### 3.10 Boost Mode Tracking
 
@@ -140,8 +144,8 @@ boost_duration_max = maxGas / gasConsumptionRate
 
 ```
 distance_max = boostSpeed * boost_duration_max
-             = 19 * 1.0
-             = 19 units (= 19 tiles at 16 PPU)
+             = 11 * 1.0
+             = 11 units (= 11 tiles at 16 PPU)
 ```
 
 With halving on release at time t:
@@ -166,19 +170,11 @@ if boostMode == 3 (down):
     V = V  (no change)
 ```
 
-### Wall Nudge
+### Wall Nudge — REMOVED
 
-```
-if boostMode == 1 AND wall_detected:
-    V.y = wallNudgeSpeed
-
-wall_detected = Physics2D.Raycast(
-    origin: player.position,
-    direction: (jetpackDirection.x, 0),
-    distance: wallCheckDistance,
-    layerMask: groundLayer
-).collider != null
-```
+> **REMOVED as of 2026-04-21.** This formula is no longer active. See Section 3.9 for the removal rationale.
+>
+> ~~`if boostMode == 1 AND wall_detected: V.y = wallNudgeSpeed`~~
 
 ### Post-Boost Snap-Back Gravity
 
@@ -200,12 +196,11 @@ if !isJetpacking AND V.y > 0 AND !isVarJumping:
 | No directional input at activation | Uses the most recently stored direction from previous edge-detected input. |
 | Diagonal input (e.g., up+right held) | Uses whichever cardinal direction was most recently edge-detected. Not both. |
 | Land during active boost | Boost ends immediately. Fuel recharges. No halving applied (landing overrides). |
-| Hit ceiling during upward boost | Physics collision stops upward movement. Boost continues draining fuel until release or empty. Wall nudge does not apply (only horizontal mode). |
+| Hit ceiling during upward boost | Physics collision stops upward movement. Boost continues draining fuel until release or empty. |
 | Hit floor during downward boost | Triggers landing. Boost ends. Fuel recharges. |
 | Fuel runs out mid-boost | Boost ends with mode-specific halving. Post-boost gravity applies. |
 | Release and re-press jetpack mid-air | First boost ends (with halving). Second press activates a new boost if fuel remains. |
-| Wall nudge with no wall | No effect. Raycast finds nothing. Normal horizontal boost continues. |
-| Wall nudge at wall corner/edge | Raycast may miss depending on player position relative to wall geometry. wallCheckDistance (0.6) provides some tolerance. |
+| Jetpack pressed during active dash | Blocked. Dash and jetpack are mutually exclusive at activation. Jetpack input is ignored until the dash completes. |
 | Jump pressed during jetpack | Ignored. Jump and jetpack are mutually exclusive. Jetpack activation clears jump state. |
 | Jetpack pressed during variable jump hold | Activates jetpack, ends jump. Jump state cleared. |
 | Secondary booster during jetpack | Handled by SecondaryBooster's own activation rules (separate system). |
@@ -222,7 +217,7 @@ if !isJetpacking AND V.y > 0 AND !isVarJumping:
 | **PlayerGravity** | Hard | Must suppress gravity (scale = 0) while `isJetpacking == true`. Must apply fast fall (2x) for post-boost snap-back. |
 | **PlayerController** | Hard | Orchestrates `Tick()` call order in FixedUpdate. Provides ground state, input state, and edge-detection flags. |
 | **Input System** | Hard | Provides jetpack button press state and directional input for direction selection. |
-| **Physics2D** | Hard | Provides Rigidbody2D for velocity manipulation and Raycast for wall detection. |
+| **Physics2D** | Hard | Provides Rigidbody2D for velocity manipulation. |
 | **PlayerJump** | Soft | Jump and jetpack are mutually exclusive. Jetpack activation clears jump timers. |
 | **PlayerMovement** | Soft | Horizontal movement is effectively overridden during boost (velocity set directly). |
 | **JetpackParticles** | Soft (presentation) | Reads `IsJetpacking` and fuel state for visual feedback. Not required for function. |
@@ -235,25 +230,23 @@ if !isJetpacking AND V.y > 0 AND !isVarJumping:
 
 | Parameter | Default Value | Range / Units | Location | Effect |
 |-----------|--------------|---------------|----------|--------|
-| `boostSpeed` | 19 | units/sec | PlayerJetpack | Speed of boost in any direction. ~1.9x moveSpeed. Higher = faster traversal, harder to control in tight spaces. |
+| `boostSpeed` | 11 | units/sec | PlayerJetpack | Speed of boost in any direction. ~1.83x moveSpeed. Higher = faster traversal, harder to control in tight spaces. |
 | `gasConsumptionRate` | 100 | units/sec | PlayerJetpack | Fuel drain speed. At 100 max gas, this gives ~1 second of boost. Lower = longer boosts, more forgiving. |
 | `maxGas` | 100 | units | JetpackGas | Total fuel capacity. Combined with consumption rate determines boost duration. |
-| `wallNudgeSpeed` | 2 | units/sec | PlayerJetpack | Upward velocity applied when horizontal boost contacts wall. Higher = faster wall climbing. |
-| `wallCheckDistance` | 0.6 | units | PlayerJetpack | Raycast length for wall detection during horizontal boost. Must be slightly larger than half the player's width to reliably detect walls. |
-| `groundLayer` | Layer 8 | LayerMask | PlayerJetpack | Which layers count as walls for wall nudge raycast. |
+| ~~`wallNudgeSpeed`~~ | ~~2~~ | ~~units/sec~~ | ~~PlayerJetpack~~ | **REMOVED (2026-04-21).** Upward velocity on wall contact during horizontal boost. Removed due to gravity=0 conflict causing infinite wall climbing. |
+| ~~`wallCheckDistance`~~ | ~~0.6~~ | ~~units~~ | ~~PlayerJetpack~~ | **REMOVED (2026-04-21).** Raycast length for wall detection. Removed alongside wallNudgeSpeed. |
 
 ### Tuning Relationships
 
-- **boostSpeed / moveSpeed ratio**: Currently 1.9x. This ratio determines how much faster jetpack traversal is vs. ground movement. Cave Story's Booster 2.0 uses a similar ratio relative to its terminal velocity.
+- **boostSpeed / moveSpeed ratio**: Currently ~1.83x (11 / 6). This ratio determines how much faster jetpack traversal is vs. ground movement. Cave Story's Booster 2.0 uses a similar ratio relative to its terminal velocity.
 - **maxGas / gasConsumptionRate**: This ratio is the boost duration in seconds. Currently 1.0s. Changing either value independently changes the duration.
-- **boostSpeed * (maxGas / gasConsumptionRate)**: Maximum boost distance in units. Currently 19 tiles. This is the fundamental level design constraint — gaps and rooms must be designed around this distance.
+- **boostSpeed * (maxGas / gasConsumptionRate)**: Maximum boost distance in units. Currently 11 tiles. This is the fundamental level design constraint — gaps and rooms must be designed around this distance.
 
 ### Per-Chapter Tuning (Planned)
 
 Future chapters may adjust these parameters via `ChapterConfig`:
 - Shorter fuel duration for harder chapters.
 - Mid-air fuel pickups (calls `JetpackGas.RechargeFromPickup()`) to create longer traversal puzzles.
-- Modified wall nudge speed for chapters with vertical wall-climbing challenges.
 
 ---
 
@@ -290,14 +283,15 @@ Future chapters may adjust these parameters via `ChapterConfig`:
 ### Post-Boost Snap-Back
 - [ ] After upward boost ends and player has positive Y velocity (from halving), fast fall gravity (2x) applies immediately. No floaty arc.
 
-### Wall Nudge
-- [ ] During horizontal boost, contacting a wall applies `wallNudgeSpeed` upward velocity.
-- [ ] Wall nudge does not apply during upward or downward boost.
-- [ ] Repeated horizontal boosts into a wall allow the player to climb the wall incrementally.
+### Wall Nudge — REMOVED
+- [N/A] ~~During horizontal boost, contacting a wall applies `wallNudgeSpeed` upward velocity.~~ (Removed 2026-04-21 — gravity=0 conflict.)
+- [N/A] ~~Wall nudge does not apply during upward or downward boost.~~ (Removed with wall nudge.)
+- [N/A] ~~Repeated horizontal boosts into a wall allow the player to climb the wall incrementally.~~ (Removed with wall nudge.)
 
 ### Mutual Exclusion
 - [ ] Activating jetpack clears any active jump state (variable jump timer, etc.).
 - [ ] Jump input is ignored while jetpack is active.
+- [ ] Jetpack activation is blocked during an active dash. Jetpack input during a dash is ignored until the dash completes.
 
 ### Direction
 - [ ] Direction uses edge detection: only updates when a directional key transitions from not-pressed to pressed.
@@ -315,6 +309,7 @@ Future chapters may adjust these parameters via `ChapterConfig`:
 **Cave Story's Booster 2.0** is the primary reference. Key qualities to match:
 - **Committed bursts**: Each activation is a decision you ride out. No micro-adjustments mid-boost.
 - **Fuel tension**: One second feels generous until you're two-thirds across a gap and the engine sputters. The countdown is felt, not seen.
-- **Wall climbing rhythm**: Horizontal boost into wall, nudge up, fall slightly, boost again. A rhythmic, earned vertical traversal.
 - **Directional vocabulary**: Players develop an internal language of "right-boost, up-boost, right-boost" sequences to navigate complex rooms.
 - **Post-boost commitment**: When the boost ends, you're at the mercy of gravity. The halving softens the transition but doesn't save you from a bad trajectory.
+
+> **Note:** Wall climbing rhythm (horizontal boost into wall, nudge up, repeat) was originally a design target from Booster 2.0 but has been removed. Vertical traversal is achieved via the upward boost direction instead. See Section 3.9.
