@@ -81,12 +81,14 @@ Assets/Scripts/
 ### Other Key Locations
 ```
 Assets/Resources/PlayerInput.inputactions  — Input bindings (loaded at runtime)
-Assets/Scenes/TestRoom.unity               — Main test scene (ch1-room-01 and ch1-room-02)
-Assets/Tiles/GroundTile.asset              — Tilemap tile (16×16 white, 16 PPU)
-Assets/Tiles/GroundSprite.png              — Persistent sprite for interactables
+Assets/Scenes/TestRoom.unity               — Main test scene (ch1-Room-01 in progress)
+Assets/Tiles/                              — Tile assets (PrtCave, PrtMimi, etc. + Interactables)
+Assets/Tiles/Palettes/                     — Tile Palettes for painting rooms
+Assets/Prefabs/Interactables/              — Prefabs spawned by SpawnTiles at runtime
+Assets/Scripts/Tiles/                      — SpawnTile + SpawnTileManager system
 Assets/Sprites/Player/MyChar.png           — Placeholder sprites (Cave Story)
-Assets/Animations/                         — Animation clips and controller
-Assets/Editor/BuildTutorialRooms.cs        — Room build scripts
+Assets/Sprites/Placeholders/               — Shape-coded placeholder sprites for interactables
+Assets/Editor/                             — Level editor tools (LevelEditorSetup, RoomTools, etc.)
 ProjectSettings/                           — Physics2D gravity is -20
 design/gdd/                                — Game design documents (5 GDDs + design direction)
 design/levels/chapter1-room-designs.md     — Room designs and layout reference

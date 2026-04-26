@@ -45,7 +45,7 @@ Each chapter introduces one new gimmick (wind turbines, gravity switches, closin
 | Phase | Content | Milestone |
 |-------|---------|-----------|
 | Phase 1 | Core prototype — movement + jetpack + test room | Complete |
-| Phase 2 | Chapter 1 (Tutorial) — 4 rooms, SFX, death/respawn, level editor workflow, title screen | Vertical Slice |
+| Phase 2 | Chapter 1 (Tutorial) — tutorial rooms (hand-designed via Level Editor), SFX, death/respawn, ~~level editor workflow~~ ✓, title screen | Vertical Slice |
 | Phase 3 | Chapter 2+ — 15-20 rooms per chapter, gimmick framework | Alpha |
 | Phase 4 | Speedrun layer — momentum tech, wavedash, timer | Beta |
 | Phase 5 | Polish — original art, soundtrack (replace Cave Story placeholders) | Polish |

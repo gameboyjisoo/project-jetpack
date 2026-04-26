@@ -30,7 +30,7 @@ The game fuses two design pillars: **Maneuvering Skill** (Celeste-tight platform
 
 All core movement systems implemented and tuned: walk, jump, jetpack, dash, wavedash, and gun mode. Game architecture complete (event bus, room system, camera with smooth transitions).
 
-**Playable content**: 4-room tutorial (Chapter 1) built and playable in `TestRoom.unity`. Fuel-state gates (3 tiers: High/Mid/Low) working. Death/respawn with invincibility flash. Hazards and mid-air pickups (fuel recharge, dash recharge) fully integrated.
+**Playable content**: Tutorial level (Chapter 1) being hand-designed in `TestRoom.unity`. Level editor workflow with Tile Palettes (Cave Story tilesets + interactables) and Room creation tool. Fuel-state gates (3 tiers: High/Mid/Low) working. Death/respawn with invincibility flash. Hazards and mid-air pickups (fuel recharge, dash recharge) fully integrated.
 
 **Feedback systems**: All diegetic — exhaust particle gradient (cyan > orange > red), audio bursts with pitch/frequency modulation, no persistent HUD bar.
 
@@ -39,7 +39,7 @@ All core movement systems implemented and tuned: walk, jump, jetpack, dash, wave
 | Phase | Description | Status |
 |---|---|---|
 | 1. Core Prototype | Movement, jetpack, dash, gun mode, room system, camera, fuel gates, death/respawn | COMPLETE |
-| 2. Chapter 1 (Tutorial) | 4 rooms teaching all mechanics, room transitions, basic SFX, title screen | Next (4 rooms complete, tuning in progress) |
+| 2. Chapter 1 (Tutorial) | Tutorial rooms hand-designed via Level Editor, room transitions, basic SFX, title screen | Next (level editor done, ch1-Room-01 in progress) |
 | 3. Chapter 2+ (Gimmicks) | Each chapter introduces one new gimmick, 15-20 rooms per chapter | Planned |
 | 4. Speedrun Layer | Momentum preservation, jetpack cancels, hidden skips, in-game timer | Planned |
 | 5. Polish & Original Art | Replace placeholder sprites, original soundtrack | Phase 5 |
@@ -50,9 +50,9 @@ All core movement systems implemented and tuned: walk, jump, jetpack, dash, wave
 1. Clone the repo: `git clone https://github.com/gameboyjisoo/project-jetpack.git`
 2. Open in **Unity Hub** with Unity **6000.0.34f1**
 3. Open scene: `Assets/Scenes/TestRoom.unity`
-4. Hit Play to test the 4-room tutorial
+4. Hit Play to test the tutorial level
 
-**Building new rooms**: Rooms are created via Tilemap in the editor. See `design/levels/chapter1-room-designs.md` for layout templates. Rooms use Layer 8 (Ground) with CompositeCollider2D set to Polygons geometry. The Coplay MCP (`/.mcp.json`) can automate room creation and population via editor scripts.
+**Building new rooms**: Use `Project Jetpack > New Room` (Ctrl+Shift+R) to create room shells. Paint walls with Cave Story tile palettes (Active Target → Walls), paint interactables with the Interactables Palette (Active Target → Interactables). See CLAUDE.md "How to Build a Room" for full workflow.
 
 ## Built With
 

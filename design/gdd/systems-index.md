@@ -2,8 +2,8 @@
 
 > **Status**: Draft
 > **Created**: 2026-04-19
-> **Last Updated**: 2026-04-19
-> **Source Concept**: CLAUDE.md (game concept not yet extracted to design/gdd/game-concept.md)
+> **Last Updated**: 2026-04-26
+> **Source Concept**: design/gdd/game-concept.md
 
 ---
 
@@ -36,7 +36,7 @@ Project Jetpack is a fast-paced 2D pixel art platformer inspired by Cave Story's
 | 17 | Runtime Tuning Panel | Meta | Vertical Slice | Not Started | — | All player systems |
 | 18 | Audio System | Audio | Vertical Slice | In Progress | — | None |
 | 19 | Hazard System | Gameplay | Vertical Slice | Implemented | — | Physics2D, Respawn System |
-| 20 | Level Editor Workflow | Meta | Vertical Slice | Not Started | — | Room System, Tilemap |
+| 20 | Level Editor Workflow | Meta | Vertical Slice | Implemented | — | Room System, Tilemap |
 
 ---
 
@@ -146,7 +146,7 @@ Project Jetpack is a fast-paced 2D pixel art platformer inspired by Cave Story's
 | Design docs approved | 0 |
 | MVP systems with GDDs | 5/8 (Movement, Jump, Jetpack, Secondary Booster, Fuel Feedback) |
 | Vertical Slice systems implemented | 5 (Event Bus, Fuel-State Gates, Wavedash, Gun Mode, Hazards) |
-| Tutorial rooms built | 4 (compressed from 15-room draft, 2026-04-26) |
+| Tutorial rooms built | ch1-Room-01 in progress (hand-designed via Level Editor, 2026-04-26) |
 
 ---
 

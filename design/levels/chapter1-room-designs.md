@@ -1,41 +1,31 @@
 # Chapter 1: Tutorial Room Designs
 
-> **Status**: Built (4 rooms, compressed from original 15-room draft)
+> **Status**: In Progress (user hand-designing rooms via Level Editor)
 > **Updated**: 2026-04-26
-> **Rooms**: 4 (built), original 15-room designs preserved below for reference
-> **Room Size**: 60×34 units (ASCII designed at 30×14, scaled 2×)
+> **Room Size**: 60×34 units
 > **Tile Size**: 1×1 units (16px at 16 PPU)
+> **Build method**: Level Editor Workflow — Tile Palette (PrtCave + Interactables) + Room Tool (`Project Jetpack > New Room`)
 
-> **Note (2026-04-26)**: Tutorial compressed from 15 rooms to 4. Each room teaches multiple mechanics. The original 15 designs are preserved below but are NOT built — only the 4 compressed rooms exist in the scene. Build scripts at `Assets/Editor/BuildTutorialRooms.cs`.
+> **Note (2026-04-26)**: Old MCP-generated rooms (MCP_Room_01 through 04) were deleted. Tutorial rooms are now hand-designed by the developer using the Tile Palette workflow. The original 15 ASCII room designs below are reference material, not built.
 
-## Built Rooms (4-room compressed tutorial)
+## Current Rooms (hand-designed)
 
-### Room 1: "Move and Fly"
-**Teaches**: Walk, jump, first spikes, jetpack (forced by tall wall), fuel awareness (mid-point landing)
-- Left section: flat ground → staircase platforms → spike gap (first death)
-- Middle: tall wall that can't be jumped → forces jetpack discovery
-- Right section: wide spike pit → mid-point platform to refuel → exit
+### ch1-Room-01 (in progress)
+**Teaches**: Fuel state as a key (Low gate), mechanic combination (jetpack + dash)
+**Tutorial design pattern**: Safe space → comprehension check (gate) → danger zone
 
-### Room 2: "Dash and Survive"
-**Teaches**: Dash exists (small gaps), dash+jetpack combo (wide gap), dash pickups
-- Small spike gaps dashable without jetpack → teaches dash
-- Wide spike gap needs jetpack to cross + dash for precise landing
-- Fuel and dash pickups placed strategically
+Layout (lower-left section built so far):
+- Player spawns top-left on a ledge
+- Drops down a corridor with NO hazards — safe space to experiment with jetpack
+- Low fuel gate (red) blocks the only way forward — player must burn fuel to reach 0-20%
+- After the gate: spike rows slightly longer than max jetpack range (~12-13 units) — forces player to combine jetpack + dash to cross
+- Fuel recharges on landing after the gate, so spikes test full-fuel capabilities + dash combo, not depleted survival
 
-### Room 3: "The Fork"
-**Teaches**: Fuel gates (High cyan + Low red), fuel-state routing
-- Spawn on center platform, two paths diverge
-- Left: High fuel gate (>50%) — easier path if you conserved fuel
-- Right: Low fuel gate (<20%) — harder path if you burned fuel
-- Both paths lead to exit at top center
-- **THIS is where the game's identity clicks**
-
-### Room 4: "Graduation"
-**Teaches**: Everything combined + gun mode swap + shootable target
-- Fuel fork (High left, Low right)
-- Gun swap zone (green, visual placeholder) + target (yellow, visual placeholder)
-- Hazards, fuel pickup, dash pickup
-- Multiple valid solutions depending on skill
+**Design principles demonstrated:**
+- Safe space before the lesson (no hazards before the gate)
+- Gate as comprehension check ("do you understand fuel states?"), not skill test
+- Obstacle sizing forces specific mechanic combinations (spikes > jetpack range = must use both jetpack and dash)
+- Each landing resets fuel — sections are independent fuel puzzles
 
 ---
 
@@ -495,29 +485,18 @@ These rooms introduce the jetpack. The player MUST use it to progress.
 
 ## Scene Setup Guide
 
-### How to Build a Room in Unity
+### How to Build a Room in Unity (Level Editor Workflow)
 
-1. **Create a new Scene** or section in the existing scene
-2. **Add a Tilemap**:
-   - GameObject → 2D Object → Tilemap → Rectangular
-   - Import Cave Story tilesets as Tile Palette (Window → 2D → Tile Palette)
-   - Paint the room geometry (walls, floors, platforms)
-   - Set Tilemap Collider 2D on the tilemap (for collision)
-   - Set the tilemap's layer to **Ground (8)**
-3. **Add a Room component**:
-   - Create an empty GameObject at the room's center
-   - Add `Room` component, set `roomSize` to (30, 17)
-   - Set `roomId` to "ch1-room-01" etc.
-   - Create a child empty as the spawn point, assign to `spawnPoint`
-4. **Add interactive elements**:
-   - Drag in FuelGate prefab, set required tier
-   - Place hazard objects (BoxCollider2D trigger, Hazard component, layer 10)
-   - Place fuel/dash pickups
-5. **Connect rooms**:
-   - Place rooms side by side (Room 1 center at x:0, Room 2 at x:30, etc.)
-   - RoomManager detects when player crosses bounds
-   - Camera lerps to new room automatically
+1. **Create Room shell**: `Project Jetpack > New Room` (Ctrl+Shift+R). Auto-positions the room, creates Room + Grid + Walls (with colliders) + Interactables (with SpawnTileManager) + SpawnPoint. Paints border walls with transition openings.
+2. **Paint walls/floors**: Window > 2D > Tile Palette → select a Cave Story palette (e.g., PrtCave Palette) → **Active Target → Walls** → paint.
+3. **Paint interactables**: Tile Palette → select **Interactables Palette** → **Active Target → Interactables** → paint hazards (orange spikes), pickups (cyan circle, magenta diamond), fuel gates (colored bars), spawn point (green arrow).
+4. **At runtime**: `SpawnTileManager` spawns prefabs at each SpawnTile position and clears placeholder visuals.
+5. **Save scene** (Ctrl+S) after changes.
+
+**Key rule**: Always check the **Active Target** dropdown — Walls for ground tiles, Interactables for hazards/pickups/gates.
 
 ### Room Naming Convention
-- `ch1-room-01` through `ch1-room-15`
-- Scene: `Chapter1.unity` (or all rooms in one scene, spaced 30 units apart)
+- User-designed rooms: `ch1-Room-XX` (capital R)
+- Claude-generated rooms: `ch1-room-XX` (lowercase r)
+- Scene: `TestRoom.unity` (all rooms in one scene, 60 units apart)
+- Room size: 60×34 units (default from Room Tool)

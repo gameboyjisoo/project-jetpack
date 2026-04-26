@@ -422,8 +422,8 @@ Level infrastructure and environmental mechanics. Communicates with Core via eve
 
 | System | Status | Notes |
 |--------|--------|-------|
-| **Camera** | Implemented, tested | Room-snap active with smooth lerp transitions. 4-room tutorial built (ch1-room-01 through ch1-room-04). |
-| **Room System** | Implemented, tested | `Room.cs`, `RoomManager.cs`. Rooms built via Tilemaps in Unity Editor. `MovementTestLevel.cs` and `Chapter1Generator.cs` deleted 2026-04-21. |
+| **Camera** | Implemented, tested | Room-snap active with smooth lerp transitions. Tutorial rooms hand-designed via Level Editor. |
+| **Room System** | Implemented, tested | `Room.cs`, `RoomManager.cs`. Rooms built via Level Editor (Tile Palette + Room Tool). Two-tilemap structure: Walls + Interactables with SpawnTileManager. |
 | **Respawn** | Implemented | `Hazard.cs` + `PlayerRespawn.cs`. Death → fade → spawn at room spawn point → invincibility flash. |
 | **Hazards** | Implemented | `Hazard.cs` trigger on layer 10. Kill on contact. |
 | **Fuel Gate** | Implemented | `FuelGate.cs`. Opens when player fuel matches tier (High/Mid/Low). Color-matched to exhaust gradient. |
@@ -532,7 +532,7 @@ Key deliverables:
 - `GameEventBus.cs` -- Central pub/sub system (**implemented**, 9 publishes wired)
 - `PlayerAPI.cs` -- Read-only player state facade for Track B (planned)
 - `RoomCamera.cs` -- Celeste-style room-snap with follow-mode fallback (**implemented**)
-- `Room.cs` / `RoomManager.cs` -- Room definition and transitions (**implemented**). Rooms built via Tilemaps. `MovementTestLevel.cs` and `Chapter1Generator.cs` deleted.
+- `Room.cs` / `RoomManager.cs` -- Room definition and transitions (**implemented**). Rooms built via Level Editor (Tile Palette + Room Tool). Two-tilemap structure: Walls + Interactables. `MovementTestLevel.cs` and `Chapter1Generator.cs` deleted.
 - `Hazard.cs` / `PlayerRespawn.cs` -- Hazard collision -> death -> respawn (**implemented**)
 - `FuelGate.cs` -- Fuel-threshold barrier, 3 tiers (**implemented**)
 - `GasRechargePickup.cs` / `DashRechargePickup.cs` -- Mid-air pickups (**implemented**)
@@ -559,7 +559,7 @@ Track B **never** directly modifies player velocity or state. All player-affecti
 
 ### Design
 
-- **Remaining Chapter 1 rooms**: 4-room tutorial is built (rooms 1-4). Full Chapter 1 is 10-15 rooms (designs at `design/levels/chapter1-room-designs.md`). Room count compressed from original 15-room plan.
+- **Chapter 1 tutorial rooms**: ch1-Room-01 in progress (hand-designed via Level Editor). Tutorial room count TBD. Original 15-room ASCII designs at `design/levels/chapter1-room-designs.md` are reference only.
 - **Landing feedback**: Squash animation, dust particles, camera response not yet implemented.
 - **Basic SFX**: Jump, land, dash, death sounds not yet implemented.
 - **Accessibility**: When should `GasMeterUI.cs` be reactivated as an accessibility toggle? What other accessibility options are needed?
