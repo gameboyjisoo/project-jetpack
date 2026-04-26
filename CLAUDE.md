@@ -54,18 +54,17 @@ This project is built step-by-step, collaboratively. Each change should be small
 
 ### Level Generation (DELETED)
 - `MovementTestLevel.cs` and `Chapter1Generator.cs` were **deleted** (2026-04-21). Code-generated rooms caused invisible walls and broken transitions.
-- **Build rooms using Tilemaps** via Unity editor or Coplay MCP `execute_script`. See `design/levels/chapter1-room-designs.md` for layouts.
+- Rooms are now built via the **Level Editor Workflow** (Tile Palette + Room Tool). See "How to Build a Room" section.
 
 ### Room System (Room.cs, RoomManager.cs)
 - Rooms defined by `Room` MonoBehaviour with size, spawn point, and room ID. `Init()` method for runtime setup.
 - `RoomManager` singleton detects player crossing room boundaries via bounds checking in Update. Leave the `rooms` array empty — it auto-discovers via `FindObjectsByType<Room>` at Start.
 - Publishes `RoomEntered`, `RoomTransitionStarted`, `RoomTransitionCompleted` via Event Bus.
-- **4 tutorial rooms built and playable** in TestRoom.unity (ch1-room-01 through ch1-room-04, each 60×34 units).
 
 ### Tilemap Setup (critical conventions)
-- Ground tiles use `Assets/Tiles/GroundTile.asset` (16×16 white sprite, Point filter, 16 PPU).
-- Persistent sprite for interactables: `Assets/Tiles/GroundSprite.png` (16×16, Point filter, 16 PPU).
-- Tilemap GameObjects: Grid parent → Walls child. Walls must be on **Layer 8 (Ground)**.
+- Ground tiles use `Assets/Tiles/GroundTile.asset` (16×16 white sprite, Point filter, 16 PPU) or Cave Story tile assets from `Assets/Tiles/PrtCave/` etc.
+- Interactables use **SpawnTile** assets from `Assets/Tiles/Interactables/` with shape-coded placeholder sprites from `Assets/Sprites/Placeholders/`.
+- Tilemap GameObjects: Grid parent → **Walls** child (ground, Layer 8) + **Interactables** child (SpawnTiles, SpawnTileManager). Walls must be on **Layer 8 (Ground)**.
 - **Rigidbody2D must be Static**. Add `CompositeCollider2D` for performance.
 - **CompositeCollider2D geometryType MUST be Polygons** (not Outlines). Outlines creates edge colliders that break the dual-raycast ground check — rays starting just below the floor surface hit the bottom edge's downward normal, failing the `normal.y > 0.7` check.
 - TilemapCollider2D compositeOperation = Merge.
@@ -117,7 +116,8 @@ The game uses **diegetic feedback** instead of HUD bars — the player reads fue
 ### Sprites
 - All sprites use **Point filtering, no compression, 16 pixels per unit**.
 - MyChar.png (200x64) is sliced into 20 named 16x16 sprites (Cave Story placeholders).
-- Platforms in test level use runtime-generated 16x16 white square sprites with colored tinting.
+- Cave Story tilesets (PrtCave, PrtMimi, PrtOside, PrtFall, PrtHell) sliced into 672 tile assets at `Assets/Tiles/`.
+- Interactable placeholder sprites at `Assets/Sprites/Placeholders/` — shape-coded (spikes, circle, diamond, bars, arrow) with color tinting.
 
 ## Important Conventions
 - Physics uses `rb.linearVelocity` (Unity 6), not `rb.velocity`.
@@ -312,7 +312,7 @@ Architecture documented: 5 GDDs + design-direction.md, 8 ADRs, master architectu
 **Track B:** ~~Event bus~~ ✓ → ~~room-snapping camera~~ ✓ + respawn → fuel-state gates → gimmick framework → chapter configuration.
 
 ### Phase 2 — Chapter 1 (Tutorial)
-4-room tutorial (compressed from original 15-room design). Room transition effects. Basic SFX. Death particles & screen shake. Title screen. Developer-facing level editing workflow.
+~~Developer-facing level editing workflow~~ ✓. Tutorial rooms hand-designed by developer using Tile Palette. ch1-Room-01 in progress. Room transition effects. Basic SFX. Death particles & screen shake. Title screen.
 
 ### Phase 3 — Chapter 2+ (Gimmick Chapters)
 Each chapter introduces one new gimmick (wind turbines, gravity switches, closing platforms, gun mode puzzles, blind zones, etc.). 15-20 rooms per chapter. Booster mode can change mid-chapter or mid-room via BoosterSwapZone.
@@ -331,11 +331,10 @@ Replace all Cave Story sprites. Original character, tilesets, effects. Soundtrac
 - **RoomCamera follows within large rooms**: Camera smoothly follows player, clamped to room bounds. Degrades to center-lock for single-screen rooms. `ClampToRoom()` helper handles both SetRoom and UpdateRoomFollow.
 - **CompositeCollider2D Polygons fix**: Outlines geometry broke ground detection. Rays starting just below floor surface hit bottom edge (downward normal), failing `normal.y > 0.7`. Switching to Polygons makes the collider solid.
 - **Dash ammo recharge guard**: Added `!IsBoosting` to ground recharge check in SecondaryBooster.Update(). Prevents upward ground dashes from instantly refilling ammo before the player leaves the floor.
-- **Room tilemap setup**: Created `Assets/Tiles/GroundTile.asset` and `GroundSprite.png` (16×16, Point filter, 16 PPU). Two rooms built via editor scripts with proper Grid → Tilemap → TilemapCollider2D → CompositeCollider2D (Polygons, Static Rigidbody2D) on Layer 8.
-- **Room exit openings**: Punched 3-tile-tall openings in connecting walls (rows 18-20) so player can walk between rooms.
+- **Room tilemap setup**: Created `Assets/Tiles/GroundTile.asset` and `GroundSprite.png` (16×16, Point filter, 16 PPU). Tilemap uses Grid → Tilemap → TilemapCollider2D → CompositeCollider2D (Polygons, Static Rigidbody2D) on Layer 8.
 - **Jetpack blocked during dash**: Added `isDashing` parameter to `PlayerJetpack.Tick()`. PlayerController passes `secondaryBooster.IsBoosting`. Prevents frozen-in-air bug where dash overrides velocity while jetpack disables gravity and movement.
 - **Wall nudge removed**: Removed wall nudge from PlayerJetpack entirely. With gravity=0 during horizontal boost, any upward velocity from the nudge persisted forever, causing infinite wall climbing. Now horizontal boost into a wall = zero velocity, fuel draining.
-- **Rooms populated with hazards and pickups**: Room 1 has 5 spike strips + fuel/dash pickups. Room 2 has spike floor + 3 fuel pickups + 2 dash pickups. All created via editor script with proper layers and components.
+- **Rooms now built via Level Editor**: Old MCP rooms (MCP_Room_01 through 04) deleted 2026-04-26. Rooms are hand-designed using Tile Palette workflow. Interactables painted as SpawnTiles, spawned as prefabs at runtime.
 
 ## Multi-Session Protocol
 When running parallel Claude Code sessions, follow the file ownership rules in the design spec:
