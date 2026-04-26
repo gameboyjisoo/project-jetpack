@@ -14,18 +14,20 @@ public static class CreateSpawnTiles
     {
         public string name;
         public string prefabPath;
+        public string spritePath;
         public Color color;
     }
 
     static readonly TileDef[] Definitions =
     {
-        new TileDef { name = "Hazard",         prefabPath = "Assets/Prefabs/Interactables/Hazard.prefab",         color = new Color(1f, 0.35f, 0f) },
-        new TileDef { name = "FuelPickup",     prefabPath = "Assets/Prefabs/Interactables/FuelPickup.prefab",     color = new Color(0f, 0.9f, 1f) },
-        new TileDef { name = "DashPickup",     prefabPath = "Assets/Prefabs/Interactables/DashPickup.prefab",     color = new Color(1f, 0f, 1f) },
-        new TileDef { name = "FuelGate_High",  prefabPath = "Assets/Prefabs/Interactables/FuelGate_High.prefab",  color = new Color(0f, 0.9f, 1f) },
-        new TileDef { name = "FuelGate_Mid",   prefabPath = "Assets/Prefabs/Interactables/FuelGate_Mid.prefab",   color = new Color(1f, 0.6f, 0f) },
-        new TileDef { name = "FuelGate_Low",   prefabPath = "Assets/Prefabs/Interactables/FuelGate_Low.prefab",   color = new Color(1f, 0.15f, 0.15f) },
-        new TileDef { name = "SpawnPoint",     prefabPath = "Assets/Prefabs/Interactables/SpawnPoint.prefab",     color = new Color(0f, 1f, 0f) },
+        new TileDef { name = "Hazard",         prefabPath = "Assets/Prefabs/Interactables/Hazard.prefab",         spritePath = "Assets/Sprites/Placeholders/Hazard.png",     color = new Color(1f, 0.35f, 0f) },
+        new TileDef { name = "FuelPickup",     prefabPath = "Assets/Prefabs/Interactables/FuelPickup.prefab",     spritePath = "Assets/Sprites/Placeholders/FuelPickup.png", color = new Color(0f, 0.9f, 1f) },
+        new TileDef { name = "DashPickup",     prefabPath = "Assets/Prefabs/Interactables/DashPickup.prefab",     spritePath = "Assets/Sprites/Placeholders/DashPickup.png", color = new Color(1f, 0f, 1f) },
+        new TileDef { name = "FuelGate_High",  prefabPath = "Assets/Prefabs/Interactables/FuelGate_High.prefab",  spritePath = "Assets/Sprites/Placeholders/FuelGate.png",   color = new Color(0f, 0.9f, 1f) },
+        new TileDef { name = "FuelGate_Mid",   prefabPath = "Assets/Prefabs/Interactables/FuelGate_Mid.prefab",   spritePath = "Assets/Sprites/Placeholders/FuelGate.png",   color = new Color(1f, 0.6f, 0f) },
+        new TileDef { name = "FuelGate_Low",   prefabPath = "Assets/Prefabs/Interactables/FuelGate_Low.prefab",   spritePath = "Assets/Sprites/Placeholders/FuelGate.png",   color = new Color(1f, 0.15f, 0.15f) },
+        new TileDef { name = "SpawnPoint",     prefabPath = "Assets/Prefabs/Interactables/SpawnPoint.prefab",     spritePath = "Assets/Sprites/Placeholders/SpawnPoint.png",  color = new Color(0f, 1f, 0f) },
+        new TileDef { name = "Checkpoint",     prefabPath = "Assets/Prefabs/Interactables/Checkpoint.prefab",     spritePath = "Assets/Sprites/Placeholders/Checkpoint.png",  color = new Color(0.4f, 1f, 0.4f) },
     };
 
     public static void Execute()
@@ -40,8 +42,6 @@ public static class CreateSpawnTiles
         string dir = "Assets/Tiles/Interactables";
         EnsureFolder(dir);
 
-        Sprite placeholder = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Tiles/GroundSprite.png");
-
         foreach (var def in Definitions)
         {
             string tilePath = $"{dir}/{def.name}.asset";
@@ -50,8 +50,16 @@ public static class CreateSpawnTiles
             if (File.Exists(tilePath))
                 AssetDatabase.DeleteAsset(tilePath);
 
+            // Load the shape-coded placeholder sprite for this specific tile type
+            Sprite sprite = AssetDatabase.LoadAssetAtPath<Sprite>(def.spritePath);
+            if (sprite == null)
+            {
+                Debug.LogWarning($"[CreateSpawnTiles] Sprite not found: {def.spritePath}, falling back to GroundSprite");
+                sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Tiles/GroundSprite.png");
+            }
+
             var tile = ScriptableObject.CreateInstance<SpawnTile>();
-            tile.editorSprite = placeholder;
+            tile.editorSprite = sprite;
             tile.editorColor = def.color;
             tile.prefab = AssetDatabase.LoadAssetAtPath<GameObject>(def.prefabPath);
 
