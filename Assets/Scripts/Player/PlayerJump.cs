@@ -54,8 +54,10 @@ public class PlayerJump : MonoBehaviour
         bool canJump = isGrounded || coyoteTimer > 0f;
         if (jumpBufferTimer > 0f && canJump && !isJetpacking)
         {
-            float newVx = rb.linearVelocity.x + moveInput.x * jumpHBoost;
-            rb.linearVelocity = new Vector2(newVx, jumpForce);
+            // Jump: boost along walk axis, launch along gravity-up axis
+            float moveSpeed = GravityState.GetMoveSpeed(rb.linearVelocity)
+                            + GravityState.GetMoveInput(moveInput) * jumpHBoost;
+            rb.linearVelocity = GravityState.ComposeVelocity(moveSpeed, jumpForce);
 
             jumpBufferTimer = 0f;
             coyoteTimer = 0f;
@@ -69,10 +71,14 @@ public class PlayerJump : MonoBehaviour
 
     public void ApplyVarJump(bool jumpHeld)
     {
-        if (varJumpTimer > 0f && jumpHeld && rb.linearVelocity.y >= 0f)
+        float upSpeed = GravityState.GetUpSpeed(rb.linearVelocity);
+        if (varJumpTimer > 0f && jumpHeld && upSpeed >= 0f)
         {
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x,
-                Mathf.Max(rb.linearVelocity.y, varJumpSpeed));
+            if (upSpeed < varJumpSpeed)
+            {
+                float moveSpeed = GravityState.GetMoveSpeed(rb.linearVelocity);
+                rb.linearVelocity = GravityState.ComposeVelocity(moveSpeed, varJumpSpeed);
+            }
         }
     }
 }

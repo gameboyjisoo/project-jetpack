@@ -85,6 +85,12 @@ public struct GravityZoneEntered
 
 public struct GravityZoneExited { }
 
+public struct GravitySwitched
+{
+    public GravityDir NewDirection;
+    public UnityEngine.Vector2 Position;
+}
+
 public struct FuelPickupCollected
 {
     public float Amount;

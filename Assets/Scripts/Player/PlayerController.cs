@@ -189,18 +189,24 @@ public class PlayerController : MonoBehaviour
         if (groundLayer.value == 0)
             groundLayer = 1 << 8;
 
-        // Two downward raycasts from feet edges — immune to wall false positives
-        Vector2 feetCenter = rb.position + groundCheckOffset;
+        // Gravity-aware ground check: rays fire in gravity direction,
+        // offset to "feet" (bottom relative to gravity), spread along walk axis.
+        Vector2 gravDown = GravityState.Down;
+        Vector2 gravRight = GravityState.MoveAxis;
+        float feetDist = Mathf.Abs(groundCheckOffset.y); // distance from center to feet
         float halfWidth = groundCheckSize.x * 0.5f;
         float rayLength = groundCheckSize.y;
 
-        RaycastHit2D hitLeft = Physics2D.Raycast(
-            new Vector2(feetCenter.x - halfWidth, feetCenter.y), Vector2.down, rayLength, groundLayer);
-        RaycastHit2D hitRight = Physics2D.Raycast(
-            new Vector2(feetCenter.x + halfWidth, feetCenter.y), Vector2.down, rayLength, groundLayer);
+        Vector2 feetCenter = rb.position + gravDown * feetDist;
 
-        isGrounded = (hitLeft.collider != null && hitLeft.normal.y > 0.7f)
-                  || (hitRight.collider != null && hitRight.normal.y > 0.7f);
+        RaycastHit2D hitLeft = Physics2D.Raycast(
+            feetCenter - gravRight * halfWidth, gravDown, rayLength, groundLayer);
+        RaycastHit2D hitRight = Physics2D.Raycast(
+            feetCenter + gravRight * halfWidth, gravDown, rayLength, groundLayer);
+
+        Vector2 gravUp = GravityState.Up;
+        isGrounded = (hitLeft.collider != null && Vector2.Dot(hitLeft.normal, gravUp) > 0.7f)
+                  || (hitRight.collider != null && Vector2.Dot(hitRight.normal, gravUp) > 0.7f);
 
         if (isGrounded && !wasGrounded)
         {
@@ -215,7 +221,7 @@ public class PlayerController : MonoBehaviour
             cornerCorrectionCooldown = 0f;
         }
 
-        if (wasGrounded && !isGrounded && rb.linearVelocity.y <= 0)
+        if (wasGrounded && !isGrounded && GravityState.GetUpSpeed(rb.linearVelocity) <= 0)
             jump.StartCoyoteTime();
     }
 
@@ -272,7 +278,8 @@ public class PlayerController : MonoBehaviour
     private void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.green;
-        Vector2 checkPos = (Vector2)transform.position + groundCheckOffset;
+        float feetDist = Mathf.Abs(groundCheckOffset.y);
+        Vector2 checkPos = (Vector2)transform.position + GravityState.Down * feetDist;
         Gizmos.DrawWireCube(checkPos, groundCheckSize);
     }
 }

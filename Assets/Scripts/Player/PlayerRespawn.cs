@@ -6,7 +6,7 @@ using System.Collections;
 public class PlayerRespawn : MonoBehaviour
 {
     [SerializeField] private float respawnDelay = 0.3f;
-    [SerializeField] private float invincibilityDuration = 1f;
+    [SerializeField] private float invincibilityDuration = 0.1f;
 
     private Vector3 currentSpawnPoint;
     private Rigidbody2D rb;

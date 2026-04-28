@@ -34,17 +34,18 @@ public class PlayerGravity : MonoBehaviour
             return;
         }
 
-        float vy = rb.linearVelocity.y;
+        // upSpeed: positive = rising, negative = falling (same sign as old vy)
+        float upSpeed = GravityState.GetUpSpeed(rb.linearVelocity);
 
-        if (vy < 0)
+        if (upSpeed < 0)
         {
             rb.gravityScale = fallGravityMultiplier;
         }
-        else if (didJump && jumpHeld && Mathf.Abs(vy) < apexThreshold)
+        else if (didJump && jumpHeld && Mathf.Abs(upSpeed) < apexThreshold)
         {
             rb.gravityScale = apexGravityMultiplier;
         }
-        else if (!didJump && vy > 0)
+        else if (!didJump && upSpeed > 0)
         {
             rb.gravityScale = fallGravityMultiplier;
         }
@@ -56,7 +57,12 @@ public class PlayerGravity : MonoBehaviour
 
     public void ClampFallSpeed()
     {
-        if (rb.linearVelocity.y < -maxFallSpeed)
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, -maxFallSpeed);
+        float upSpeed = GravityState.GetUpSpeed(rb.linearVelocity);
+        if (upSpeed < -maxFallSpeed)
+        {
+            // Decompose, clamp fall component, recompose
+            float moveSpeed = GravityState.GetMoveSpeed(rb.linearVelocity);
+            rb.linearVelocity = GravityState.ComposeVelocity(moveSpeed, -maxFallSpeed);
+        }
     }
 }

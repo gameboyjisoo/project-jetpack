@@ -44,7 +44,8 @@ This project is built step-by-step, collaboratively. Each change should be small
 ### Camera (RoomCamera.cs)
 - **Three modes**: Room-follow (follows player clamped to room bounds), room-snap transition (smooth-step lerp over 0.3s between rooms), or free-follow (fallback when no rooms exist).
 - **Room-following**: For rooms larger than the viewport, camera smoothly follows the player but clamps to room edges so nothing outside the room is shown. For single-screen rooms, this degrades to center-lock.
-- **Room transitions**: `SetRoom(Room)` for instant snap (clamped to player position), `TransitionToRoom(Room)` for smooth lerp.
+- **Room transitions**: `SetRoom(Room)` for instant snap (clamped to player position), `TransitionToRoom(Room)` for smooth lerp. Transition targets player position clamped to new room bounds (not room center).
+- **Screen shake**: Death-only (0.2s, magnitude 0.12). `enableScreenShake` toggle in Inspector for accessibility. `Shake(duration, magnitude)` public API for future use. Subscribes to `PlayerDied` via Event Bus.
 - Orthographic size 8.5. Rooms can be any size — camera adapts automatically.
 
 ### Animation (PlayerAnimator.cs)
@@ -81,6 +82,16 @@ This project is built step-by-step, collaboratively. Each change should be small
 ### Gimmicks (Assets/Scripts/Gimmicks/)
 - **FuelGate.cs**: Barrier that opens when player's fuel matches required tier (High/Mid/Low). Color-matched to exhaust gradient (cyan/orange/red). Real-time response. `Init()` method for runtime setup. Event Bus integration.
 - Three fuel tiers defined as `FuelTier` enum in JetpackGas.cs: High (50-100%), Mid (20-50%), Low (0-20%).
+- **ClosingPlatform.cs**: Timed platform cycling between solid (closed) and passable (open). Default: 2s closed, 1s open, 0.5s warning flash before opening. `cycleOffset` field for staggering multiple platforms. Layer 8 (Ground). Event Bus integration.
+- **Crusher.cs**: Ceiling hazard that detects player below (8-tile detection range, Layer 9), slams down fast (0.1s), holds (0.5s), retracts slowly (1.0s). Kills player on bottom-face contact during slam and hold. State machine: Idle → Warning → Slamming → Holding → Retracting → Cooldown. Warning flash matches ClosingPlatform pattern.
+- **GravitySwitch.cs**: Trigger zone that changes gravity direction via `GravityState.Set()`. 4 directional variants (Down/Up/Left/Right) with color-coded arrow sprites. Publishes `GravitySwitched` event.
+
+### Gravity System (GravityState.cs, 2026-04-28)
+- **Static gravity direction** (`GravityState.Current`): `GravityDir` enum — Down (default), Up, Left, Right. Changes `Physics2D.gravity` when set.
+- **All player physics are gravity-aware**: `PlayerController.CheckGround`, `PlayerJump.TryJump/ApplyVarJump`, `PlayerGravity.Tick/ClampFallSpeed`, `PlayerMovement.Tick` all use `GravityState` helper vectors instead of hardcoded Y-down.
+- **Helper methods**: `GetUpSpeed(vel)`, `GetMoveSpeed(vel)`, `GetMoveInput(input)`, `ComposeVelocity(move, up)` — decompose/recompose velocity relative to current gravity direction. `GravityState.Up`, `GravityState.Down`, `GravityState.MoveAxis` provide unit vectors.
+- **Jetpack and dash are screen-relative** — unaffected by gravity direction. Only walking, jumping, falling, and ground detection change. This is intentional: the jetpack is the player's consistent tool regardless of gravity.
+- **Design**: With gravity flipped, "ground" (where fuel recharges) moves to a different surface. The jetpack feels identical, but fuel economy changes completely because safe landing spots move.
 
 ### Pickups & Hazards
 - **GasRechargePickup.cs**: Mid-air pickup, recharges jetpack fuel. Bobbing animation. Respawns when player lands.
@@ -88,6 +99,7 @@ This project is built step-by-step, collaboratively. Each change should be small
 - **Hazard.cs**: Kills player on trigger contact (layer 10). Triggers `PlayerRespawn.Die()`.
 - **PlayerRespawn.cs**: Death → fade → respawn at room spawn point → invincibility flash. Publishes `PlayerDied` event.
 - **Projectile.cs**: Simple projectile for gun mode. Moves forward, destroys on Ground layer contact or after lifetime.
+- **PlayerSFX.cs**: Event Bus-driven SFX for jump, land, dash, death. Landing pitch/volume scales with fall speed. Jump/dash have slight random pitch variation. Recommended Cave Story placeholder clips: SE_03_0F (jump), ID17_snd_thud (land), SE_10_1D (dash), SE_23_05 (death). User assigns clips in Inspector.
 
 ### Jetpack Fuel Feedback (Minimal UI Philosophy)
 The game uses **diegetic feedback** instead of HUD bars — the player reads fuel state from the jetpack itself, not from a UI element. This keeps the screen clean and the player's eyes on the action.
@@ -169,8 +181,8 @@ The project is being developed via two parallel tracks:
 
 Key planned systems:
 - `PlayerTuning.cs` — ScriptableObject centralizing ALL tuning values (replaces scattered inspector fields)
-- `GravityHandler.cs` — Priority-based override system (jetpack/boost request gravity=0, gimmicks can override)
-- `GameEventBus.cs` — Central pub/sub decoupling gimmicks from player/camera/UI systems ✓ (implemented, 9 publishes wired)
+- ~~`GravityHandler.cs`~~ → **`GravityState.cs` implemented** (2026-04-28) — Static gravity direction (4-way). All player physics route through it. Jetpack gravity=0 still handled by PlayerGravity.Tick's gravityScale=0.
+- `GameEventBus.cs` — Central pub/sub decoupling gimmicks from player/camera/UI systems ✓ (implemented, 11+ publishes wired)
 - `ChapterConfig.cs` — Per-chapter rules (default booster mode, fuel limits, gimmick palette)
 - `BoosterSwapZone.cs` — Mid-room booster mode changes (temporary or permanent)
 
@@ -178,7 +190,7 @@ Gimmick design: See `design/gdd/design-direction.md` for full design identity. G
 
 ## Claude Code Game Studios Framework (installed 2026-04-19)
 The project uses the Claude Code Game Studios framework with 49 specialized agents, 72 skills, 12 hooks, and 11 coding standards. Key locations:
-- **GDDs**: `design/gdd/` — 5 core GDDs (player-movement, player-jump, jetpack-system, secondary-booster, fuel-feedback) + game-concept + systems-index (18 systems)
+- **GDDs**: `design/gdd/` — 5 core GDDs (player-movement, player-jump, jetpack-system, secondary-booster, fuel-feedback) + game-concept + systems-index (18 systems) + **chapter-gimmicks** (6 chapter concepts)
 - **ADRs**: `docs/architecture/` — 7 ADRs covering all Foundation/Core decisions
 - **Master architecture**: `docs/architecture/architecture.md` (645 lines, consolidates all ADRs)
 - **Control manifest**: `docs/architecture/control-manifest.md` — programmer rules per layer
@@ -206,7 +218,7 @@ The fusion: maneuvering IS fuel spending. Navigating a corridor drains fuel at a
 - **Fuel feedback**: Diegetic only (particles + audio). No persistent HUD bar. The fuel state is analog and readable by both player and environment.
 - **Gimmicks must interact with the fuel system** — no generic platformer gimmicks that ignore fuel.
 
-## Current State (updated 2026-04-26)
+## Current State (updated 2026-04-28)
 **Project phase: Pre-Production** (passed Technical Setup gate 2026-04-19).
 
 **Movement systems complete and tuned:**
@@ -216,23 +228,31 @@ The fusion: maneuvering IS fuel spending. Navigating a corridor drains fuel at a
 - Freeze frames, momentum retain, corner correction, dash buffer all working
 - Zero-friction physics material prevents wall sticking
 - Dual raycast ground check immune to wall false positives
+- **All player physics are gravity-aware** (2026-04-28) — ground check, jump, movement, fall speed all route through `GravityState` vectors. Default behavior identical to before.
 
 **Infrastructure:**
-- Event Bus implemented (ADR-0008) with 9 publishes across player systems
+- Event Bus implemented (ADR-0008) with 11+ publishes across player/gimmick systems
 - Fuel-state gates implemented (3 tiers: High/Mid/Low matching exhaust colors). Gates on Layer 8 (Ground) so player can stand on them, jump, and recharge fuel/dash.
 - Hazards + death/respawn working (Hazard.cs, PlayerRespawn.cs)
 - Fuel + dash pickups working (GasRechargePickup.cs, DashRechargePickup.cs)
-- Room camera follows player within large rooms, clamped to bounds, smooth transitions between rooms
+- Room camera follows player within large rooms, clamped to bounds, smooth transitions between rooms. Transition targets player-clamped position (not room center). Death-only screen shake with accessibility toggle.
 - Design direction document defines two-pillar identity (maneuvering + fuel timing)
+- **Chapter gimmick concepts documented** (`design/gdd/chapter-gimmicks.md`) — 6 chapters mapped
+
+**Gimmick prototypes (2026-04-28):**
+- **ClosingPlatform**: Timed barrier, cycles open/closed with warning flash. SpawnTile in Interactables Palette.
+- **Crusher**: Reactive ceiling hazard, detects player below, slams and kills. SpawnTile in palette.
+- **GravitySwitch**: 4-directional gravity change (Down/Up/Left/Right). Flips which surface is "ground" for fuel recharging. Arrow sprites per direction. SpawnTiles in palette.
+- **PlayerSFX**: Event Bus-driven placeholder SFX system (jump/land/dash/death). User assigns Cave Story clips in Inspector.
 
 **Level Editor (built 2026-04-26):**
 - **Tile Palettes**: 5 Cave Story palettes (PrtCave, PrtMimi, PrtOside, PrtFall, PrtHell) + Interactables Palette. All in `Assets/Tiles/Palettes/`.
 - **672 tile assets** sliced from Cave Story spritesheets (16×16, Point filter, 16 PPU). Uses Unity 6 `ISpriteEditorDataProvider` API.
 - **SpawnTile system** (`Assets/Scripts/Tiles/`): Custom `TileBase` subclass for interactables. Paint them like tiles in the editor; `SpawnTileManager` spawns the real prefab and clears the placeholder at runtime.
-- **Interactable prefabs** (`Assets/Prefabs/Interactables/`): Hazard, FuelPickup, DashPickup, FuelGate_High/Mid/Low, SpawnPoint. Each has shape-coded placeholder sprites (spikes, circle, diamond, bars, arrow).
+- **Interactable prefabs** (`Assets/Prefabs/Interactables/`): Hazard, FuelPickup, DashPickup, FuelGate_High/Mid/Low, SpawnPoint, Checkpoint, ClosingPlatform, Crusher, GravitySwitch_Down/Up/Left/Right. Each has shape-coded placeholder sprites.
 - **Room creation tool**: `Project Jetpack > New Room` (Ctrl+Shift+R) — editor window that auto-positions rooms, creates full Room shell with Walls + Interactables tilemaps, paints border walls with transition openings.
 - **Two-tilemap workflow per room**: `Walls` (ground tiles, Layer 8, colliders) and `Interactables` (SpawnTiles, no colliders, SpawnTileManager). Active Target dropdown in Tile Palette selects which to paint on.
-- **Placeholder sprites** (`Assets/Sprites/Placeholders/`): Shape-coded 16×16 PNGs — spikes (hazard), circle (fuel), diamond (dash), bars (gate), arrow (spawn). Color-tinted per type.
+- **Placeholder sprites** (`Assets/Sprites/Placeholders/`): Shape-coded 16×16 PNGs — spikes (hazard), circle (fuel), diamond (dash), bars (gate), arrow (spawn), slats (closing platform), teeth block (crusher), directional arrows (gravity switches). Color-tinted per type.
 
 **Scene state (TestRoom.unity):**
 - **Coplay MCP installed and working** (`.mcp.json`, `Packages/Coplay/`). Claude Code can create/modify scene objects, run editor scripts, play/stop the game.
@@ -247,21 +267,25 @@ Architecture documented: 5 GDDs + design-direction.md, 8 ADRs, master architectu
 
 ### Level design
 - **Level editor workflow: DONE** (2026-04-26) — Tile palettes, SpawnTile system, Room creation tool, prefabs all working. Developer can create rooms entirely in Unity editor.
-- **Room transition polish** — transitions work but may need tuning (camera lerp, player input during transition)
+- ~~**Room transition polish**~~ → **Transition target fixed** (2026-04-28): camera now targets player position clamped to new room bounds, not room center. Input is intentionally NOT locked during transitions (Celeste behavior).
 - **Gun swap zone + shootable target** — need `BoosterSwapZone.cs` and target interaction scripts
 - **ch1-Room-01 in progress** — user is hand-designing the tutorial level
 
 ### Gameplay features
 - **Wall slide** — not originally planned, worth considering
 - Runtime tuning panel not yet built (PlayerTuning ScriptableObject)
-- No screen shake or general juice beyond jetpack exhaust feedback
+- ~~No screen shake~~ → **Death-only screen shake implemented** (2026-04-28, with accessibility toggle). Celeste-style: subtle, no landing/dash shake.
 - **Landing feedback needed**: squash animation, dust particles, camera response
 - **Air state visual distinction needed**: rising/apex/falling sprite states
 - **Dash trail / afterimage effect** — nice-to-have, after gameplay complete
-- No SFX or music beyond jetpack audio feedback
+- ~~No SFX beyond jetpack~~ → **PlayerSFX.cs implemented** (2026-04-28). Jump/land/dash/death events. Clips need to be assigned in Inspector.
+- No music
 - No title screen or persistent HUD (intentional — minimal UI philosophy)
 - Sprites are Cave Story placeholders (original art Phase 5)
 - Animator controller not connected (placeholder sprites)
+- **BoosterSwapZone + shootable target** still needed for gun puzzle prototyping
+- **Gravity switch visual polish**: Player sprite doesn't rotate with gravity yet. Prototype-level only.
+- **Corner correction not gravity-aware**: Works correctly only with default (down) gravity. Acceptable for prototype.
 
 ### Infrastructure
 - tr-registry.yaml needs entries populated from GDDs
@@ -270,6 +294,8 @@ Architecture documented: 5 GDDs + design-direction.md, 8 ADRs, master architectu
 
 ## Known Issues
 - Scene file `groundLayer` mask doesn't persist — code fallback runs every frame in CheckGround()
+- **NEVER run `CreateSpawnTiles.Execute()` after initial setup** — it deletes and recreates ALL tile assets and the palette from scratch, breaking tile references in painted tilemaps. To add a new tile type: create only the new .asset, then append to the palette via `PrefabUtility.LoadPrefabContents`. This was learned the hard way (2026-04-28).
+- **MCP prefab/GameObject creation injects garbage into scene YAML** — inline Sprite objects, duplicate data. Has corrupted the scene file twice (2026-04-26, 2026-04-28). Always `git diff --stat` the scene after MCP operations and revert if hundreds of unexpected lines appear. Prefer creating assets via editor scripts WITHOUT touching the scene; let the user place them via Tile Palette.
 - **SerializeField values in Inspector override script defaults** — after changing defaults in code, you MUST manually update Inspector values or right-click component → Reset
 - Architecture review flagged: dependency chain described differently across docs — needs reconciliation
 - **MCP execute_script + SerializedObject on existing components may not persist** — use MCP `set_property` tool to change serialized fields on existing components instead
@@ -298,12 +324,14 @@ Architecture documented: 5 GDDs + design-direction.md, 8 ADRs, master architectu
 - **Wavedash**: Diagonal-down dash near ground converts to horizontal speed (1.2× dash speed = 38.4). Speed maintained for 0.12s (jump window). Only triggers from airborne dashes (ground dashes are normal). PlayerMovement skips tick during wavedash window.
 
 ## Next Steps
-1. ~~**Level editor workflow**~~ ✓ (2026-04-26) — tile palettes, SpawnTile system, Room tool, prefabs
+1. ~~**Level editor workflow**~~ ✓ (2026-04-26)
 2. **Finish ch1-Room-01 tutorial** — user is hand-designing; collaborate on layout
-3. **Wire up gun swap zone + shootable targets** — BoosterSwapZone.cs, target interaction system
-4. **Sprint plan** — structure Vertical Slice work into sprints
-5. **Landing feedback** — squash animation, dust particles, camera response
-6. **Basic SFX** — jump, land, dash, death sounds
+3. **Assign PlayerSFX clips** — add component to Player, assign Cave Story WAVs in Inspector
+4. **Wire up gun swap zone + shootable targets** — BoosterSwapZone.cs, target interaction system. Unblocks gun puzzle prototyping.
+5. **Test gravity switch in a real room** — build a small test room with directional switches, spikes on multiple surfaces
+6. **Test crusher in a room** — place ceiling crushers the player must dash past
+7. **Landing feedback** — squash animation, dust particles
+8. **Sprint plan** — structure Vertical Slice work into sprints
 
 ## Long-Term Plan
 
@@ -312,10 +340,17 @@ Architecture documented: 5 GDDs + design-direction.md, 8 ADRs, master architectu
 **Track B:** ~~Event bus~~ ✓ → ~~room-snapping camera~~ ✓ + respawn → fuel-state gates → gimmick framework → chapter configuration.
 
 ### Phase 2 — Chapter 1 (Tutorial)
-~~Developer-facing level editing workflow~~ ✓. Tutorial rooms hand-designed by developer using Tile Palette. ch1-Room-01 in progress. Room transition effects. Basic SFX. Death particles & screen shake. Title screen.
+~~Developer-facing level editing workflow~~ ✓. ~~Basic SFX~~ ✓ (PlayerSFX system, needs clip assignment). ~~Death screen shake~~ ✓. Tutorial rooms hand-designed by developer using Tile Palette. ch1-Room-01 in progress. Death particles. Title screen.
 
 ### Phase 3 — Chapter 2+ (Gimmick Chapters)
-Each chapter introduces one new gimmick (wind turbines, gravity switches, closing platforms, gun mode puzzles, blind zones, etc.). 15-20 rooms per chapter. Booster mode can change mid-chapter or mid-room via BoosterSwapZone.
+Each chapter introduces one new gimmick. See `design/gdd/chapter-gimmicks.md` for the full plan:
+- **Ch2**: Gravity switches (**prototype built** 2026-04-28, needs room testing)
+- **Ch3**: Closing platforms + crushers (**prototypes built** 2026-04-28)
+- **Ch4**: Gun puzzles (needs BoosterSwapZone + shootable target)
+- **Ch5**: Blind zones (concept only)
+- **Ch6**: Crosshair / timed dashes (concept only)
+- **Cross-chapter**: Wind turbines as fuel drain modifier (concept only)
+15-20 rooms per chapter. Booster mode can change mid-chapter or mid-room via BoosterSwapZone.
 
 ### Phase 4 — Speedrun & Mastery Layer
 Momentum preservation tech. Wavedash chains. Jetpack cancel techniques. Hidden skips. In-game timer.
@@ -335,6 +370,16 @@ Replace all Cave Story sprites. Original character, tilesets, effects. Soundtrac
 - **Jetpack blocked during dash**: Added `isDashing` parameter to `PlayerJetpack.Tick()`. PlayerController passes `secondaryBooster.IsBoosting`. Prevents frozen-in-air bug where dash overrides velocity while jetpack disables gravity and movement.
 - **Wall nudge removed**: Removed wall nudge from PlayerJetpack entirely. With gravity=0 during horizontal boost, any upward velocity from the nudge persisted forever, causing infinite wall climbing. Now horizontal boost into a wall = zero velocity, fuel draining.
 - **Rooms now built via Level Editor**: Old MCP rooms (MCP_Room_01 through 04) deleted 2026-04-26. Rooms are hand-designed using Tile Palette workflow. Interactables painted as SpawnTiles, spawned as prefabs at runtime.
+
+## Fixes Applied (2026-04-28)
+- **Gravity-aware player physics**: `PlayerController.CheckGround`, `PlayerJump`, `PlayerGravity`, `PlayerMovement` all route through `GravityState` vectors. Ground check raycasts fire in `GravityState.Down` direction, normal check uses `Dot(normal, GravityState.Up) > 0.7f`. Jump launches in `GravityState.Up`. Movement operates along `GravityState.MoveAxis`.
+- **Room transition target fix**: `TransitionToRoom` now uses `ClampToRoom(target.position, room)` instead of `room.RoomCenter`. Large rooms no longer snap camera to center.
+- **Screen shake (death-only)**: Celeste-style — only on `PlayerDied` event. 0.2s duration, 0.12 magnitude. Applied after all position clamping. `enableScreenShake` toggle for accessibility.
+- **PlayerSFX system**: Event Bus-driven. Landing pitch (0.85-1.1) and volume scale with fall speed. Jump/dash have random pitch jitter. Death plays at full volume.
+- **ClosingPlatform gimmick**: Timed open/close cycle with warning flash. `cycleOffset` for staggering.
+- **Crusher gimmick**: Reactive slam hazard with state machine and detection zone.
+- **GravitySwitch gimmick**: 4-directional trigger zones with per-direction arrow sprites.
+- **Palette append workflow**: `AddTileToPalette.cs` and `SetupNewGimmicks.cs` use `PrefabUtility.LoadPrefabContents` to safely append tiles without rebuilding. Learned after `CreateSpawnTiles.Execute()` destroyed user's painted interactables.
 
 ## Multi-Session Protocol
 When running parallel Claude Code sessions, follow the file ownership rules in the design spec:

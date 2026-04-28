@@ -27,7 +27,8 @@ public static class CreateSpawnTiles
         new TileDef { name = "FuelGate_Mid",   prefabPath = "Assets/Prefabs/Interactables/FuelGate_Mid.prefab",   spritePath = "Assets/Sprites/Placeholders/FuelGate.png",   color = new Color(1f, 0.6f, 0f) },
         new TileDef { name = "FuelGate_Low",   prefabPath = "Assets/Prefabs/Interactables/FuelGate_Low.prefab",   spritePath = "Assets/Sprites/Placeholders/FuelGate.png",   color = new Color(1f, 0.15f, 0.15f) },
         new TileDef { name = "SpawnPoint",     prefabPath = "Assets/Prefabs/Interactables/SpawnPoint.prefab",     spritePath = "Assets/Sprites/Placeholders/SpawnPoint.png",  color = new Color(0f, 1f, 0f) },
-        new TileDef { name = "Checkpoint",     prefabPath = "Assets/Prefabs/Interactables/Checkpoint.prefab",     spritePath = "Assets/Sprites/Placeholders/Checkpoint.png",  color = new Color(0.4f, 1f, 0.4f) },
+        new TileDef { name = "Checkpoint",       prefabPath = "Assets/Prefabs/Interactables/Checkpoint.prefab",       spritePath = "Assets/Sprites/Placeholders/Checkpoint.png",       color = new Color(0.4f, 1f, 0.4f) },
+        new TileDef { name = "ClosingPlatform", prefabPath = "Assets/Prefabs/Interactables/ClosingPlatform.prefab", spritePath = "Assets/Sprites/Placeholders/ClosingPlatform.png", color = new Color(0.85f, 0.55f, 0.1f) },
     };
 
     public static void Execute()

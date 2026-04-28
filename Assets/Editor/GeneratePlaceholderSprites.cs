@@ -55,6 +55,22 @@ public static class GeneratePlaceholderSprites
             return false;
         });
 
+        // ClosingPlatform: horizontal slats (retractable shutter look)
+        CreateSprite("ClosingPlatform", (x, y) =>
+        {
+            // Alternating 2px-tall horizontal bars with 1px gaps
+            // Looks like a gate/shutter that can retract
+            int row = y % 3; // 0,1 = solid bar, 2 = gap
+            if (row <= 1)
+            {
+                // Inset every other bar for visual interest
+                int barIndex = y / 3;
+                int inset = (barIndex % 2 == 0) ? 0 : 2;
+                return x >= inset && x < S - inset;
+            }
+            return false;
+        });
+
         // SpawnPoint: large downward arrow filling the tile
         CreateSprite("SpawnPoint", (x, y) =>
         {
@@ -73,7 +89,7 @@ public static class GeneratePlaceholderSprites
         AssetDatabase.Refresh();
 
         // Fix import settings
-        string[] sprites = { "Hazard", "FuelPickup", "DashPickup", "FuelGate", "SpawnPoint" };
+        string[] sprites = { "Hazard", "FuelPickup", "DashPickup", "FuelGate", "SpawnPoint", "ClosingPlatform" };
         foreach (var name in sprites)
         {
             string path = $"{OutputDir}/{name}.png";

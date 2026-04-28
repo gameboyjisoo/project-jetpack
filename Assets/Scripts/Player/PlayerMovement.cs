@@ -23,18 +23,20 @@ public class PlayerMovement : MonoBehaviour
         if (isSecondaryBoosting) return;
         if (isWavedashing) return;
 
-        float targetSpeed = moveInput.x * moveSpeed;
-        float currentSpeed = rb.linearVelocity.x;
+        float inputVal = GravityState.GetMoveInput(moveInput);
+        float targetSpeed = inputVal * moveSpeed;
+        float currentSpeed = GravityState.GetMoveSpeed(rb.linearVelocity);
 
         float mult = isGrounded ? 1f : airMult;
-        float rate = Mathf.Abs(moveInput.x) > 0.01f ? groundAcceleration : groundDeceleration;
+        float rate = Mathf.Abs(inputVal) > 0.01f ? groundAcceleration : groundDeceleration;
         rate *= mult;
 
         float newSpeed = Mathf.MoveTowards(currentSpeed, targetSpeed, rate * Time.fixedDeltaTime);
-        rb.linearVelocity = new Vector2(newSpeed, rb.linearVelocity.y);
+        float upSpeed = GravityState.GetUpSpeed(rb.linearVelocity);
+        rb.linearVelocity = GravityState.ComposeVelocity(newSpeed, upSpeed);
 
-        if (moveInput.x > 0.01f && !facingRight) Flip();
-        else if (moveInput.x < -0.01f && facingRight) Flip();
+        if (inputVal > 0.01f && !facingRight) Flip();
+        else if (inputVal < -0.01f && facingRight) Flip();
     }
 
     private void Flip()

@@ -5,6 +5,7 @@ using UnityEngine;
 /// When a Room is active, the camera locks to the room's center.
 /// Transitions between rooms use a smooth lerp over transitionDuration seconds.
 /// Falls back to follow-player mode when no rooms exist in the scene.
+///
 /// </summary>
 public class RoomCamera : MonoBehaviour
 {
@@ -15,6 +16,9 @@ public class RoomCamera : MonoBehaviour
     [SerializeField] private float transitionDuration = 0.3f;
     [SerializeField] private float zOffset = -10f;
 
+    [Header("Screen Shake (Accessibility)")]
+    [SerializeField] private bool enableScreenShake = true;
+
     private Transform target;
     private Camera cam;
 
@@ -24,6 +28,11 @@ public class RoomCamera : MonoBehaviour
     private Vector3 transitionStart;
     private Vector3 transitionEnd;
     private float transitionTimer;
+
+    // Screen shake state
+    private float shakeTimer;
+    private float shakeMagnitude;
+    private float shakeDuration;
 
     /// <summary>True while the camera is lerping between rooms.</summary>
     public bool IsTransitioning => isTransitioning;
@@ -41,6 +50,32 @@ public class RoomCamera : MonoBehaviour
 
         if (cam != null && cam.orthographic)
             cam.orthographicSize = 8.5f;
+    }
+
+    private void OnEnable()
+    {
+        GameEventBus.Subscribe<PlayerDied>(OnPlayerDied);
+    }
+
+    private void OnDisable()
+    {
+        GameEventBus.Unsubscribe<PlayerDied>(OnPlayerDied);
+    }
+
+    private void OnPlayerDied(PlayerDied evt)
+    {
+        Shake(0.2f, 0.12f);
+    }
+
+    /// <summary>
+    /// Trigger a screen shake. Respects the enableScreenShake toggle.
+    /// </summary>
+    public void Shake(float duration, float magnitude)
+    {
+        if (!enableScreenShake) return;
+        shakeTimer = duration;
+        shakeDuration = duration;
+        shakeMagnitude = magnitude;
     }
 
     /// <summary>
@@ -85,6 +120,8 @@ public class RoomCamera : MonoBehaviour
 
     /// <summary>
     /// Smoothly transition to a new room over transitionDuration seconds.
+    /// Targets the player's position clamped to the new room, not the room center,
+    /// so large-room transitions feel correct.
     /// </summary>
     public void TransitionToRoom(Room room)
     {
@@ -92,7 +129,13 @@ public class RoomCamera : MonoBehaviour
 
         activeRoom = room;
         transitionStart = transform.position;
-        transitionEnd = new Vector3(room.RoomCenter.x, room.RoomCenter.y, zOffset);
+
+        // Target where the player actually is inside the new room, not its center
+        if (target != null)
+            transitionEnd = ClampToRoom(target.position, room);
+        else
+            transitionEnd = new Vector3(room.RoomCenter.x, room.RoomCenter.y, zOffset);
+
         transitionTimer = 0f;
         isTransitioning = true;
     }
@@ -109,19 +152,13 @@ public class RoomCamera : MonoBehaviour
     private void LateUpdate()
     {
         if (isTransitioning)
-        {
             UpdateTransition();
-            return;
-        }
-
-        if (activeRoom != null)
-        {
+        else if (activeRoom != null)
             UpdateRoomFollow();
-            return;
-        }
+        else
+            UpdateFollow();
 
-        // Fallback: smooth follow (no rooms in scene)
-        UpdateFollow();
+        ApplyShake();
     }
 
     private void UpdateTransition()
@@ -181,5 +218,16 @@ public class RoomCamera : MonoBehaviour
 
         Vector3 targetPos = new Vector3(target.position.x, target.position.y, zOffset);
         transform.position = Vector3.Lerp(transform.position, targetPos, followSpeed * Time.deltaTime);
+    }
+
+    private void ApplyShake()
+    {
+        if (shakeTimer <= 0f) return;
+
+        float decay = shakeTimer / shakeDuration;
+        Vector2 offset = Random.insideUnitCircle * (shakeMagnitude * decay);
+        transform.position += new Vector3(offset.x, offset.y, 0f);
+
+        shakeTimer -= Time.deltaTime;
     }
 }
