@@ -387,3 +387,20 @@ When running parallel Claude Code sessions, follow the file ownership rules in t
 - **Track B sessions** only touch: `Assets/Scripts/Level/`, `Assets/Scripts/Camera/`, `Assets/Scripts/Gimmicks/`, `Assets/Scripts/Core/`
 - Commit to named branches: `track-a/<description>` or `track-b/<description>`
 - Player-affecting actions from Track B go through GameEventBus, never direct calls
+
+## Documentation Strategy
+- **CLAUDE.md** is the live source of truth — updated every session. Keep it high-level.
+- **GDDs and architecture docs** are reference docs — updated in batches before milestones, sprint plans, or when designing features that depend on them. Not every session.
+- **`docs/lessons-learned.md`** captures hard-won knowledge (MCP pitfalls, Unity quirks, design mistakes). Append-only, timestamped, categorized. See that file for details.
+- **Session Log** (below) gives the next session a quick 30-second catch-up without re-reading the whole file.
+
+## Session Log
+<!-- Each session appends 3-5 bullets. Newest first. -->
+
+### 2026-04-28
+- Designed 6 chapter gimmick concepts (gravity switches, closing platforms, crushers, gun puzzles, blind zones, crosshair) — all tied to fuel system. Written to `design/gdd/chapter-gimmicks.md`.
+- Built 3 gimmick prototypes: ClosingPlatform (timed barrier), Crusher (ceiling slam hazard), GravitySwitch (4-directional gravity change). All have SpawnTiles in Interactables Palette.
+- Made all player physics gravity-aware (GravityState.cs). Ground check, jump, movement, fall speed all route through gravity direction vectors. Jetpack/dash stay screen-relative.
+- Added PlayerSFX (Event Bus-driven jump/land/dash/death sounds) and death-only screen shake with accessibility toggle. Fixed room transition to target player-clamped position.
+- **Lesson learned**: `CreateSpawnTiles.Execute()` destroys the Interactables Palette and all tile references. Never rebuild — only append via `PrefabUtility.LoadPrefabContents`. MCP prefab operations also corrupt scene YAML. See `docs/lessons-learned.md`.
+- **Doc debt**: 14 docs flagged stale (see memory). Priority update needed for systems-index, architecture, PLAYER_GUIDE before next milestone.
