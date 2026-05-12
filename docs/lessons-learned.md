@@ -21,9 +21,17 @@ Append-only log of hard-won knowledge. Things that aren't obvious from reading t
 **What happened**: Using MCP `execute_script` with `SerializedObject` to modify fields on existing scene components appeared to work but reverted on save.
 **Fix**: Use the MCP `set_property` tool for changing serialized fields on existing components. Or edit the .asset/.prefab YAML directly for ScriptableObjects.
 
-### 2026-04-26 — save_scene needs the full path
-**What happened**: `save_scene` with `scene_name: "TestRoom"` saved to `Assets/TestRoom.unity` (wrong location) instead of `Assets/Scenes/TestRoom.unity`.
-**Fix**: Always use `scene_name: "Assets/Scenes/TestRoom"` with the full path prefix.
+### 2026-04-26 / 2026-05-13 — save_scene needs the full path
+**What happened**: `save_scene` with `scene_name: "TestRoom"` saved to `Assets/TestRoom.unity` (wrong location) instead of `Assets/Scenes/TestRoom.unity`. Happened again 2026-05-13 — also switched the active scene to the duplicate.
+**Fix**: Always use `scene_name: "Scenes/TestRoom"`. After any save_scene, verify active scene path via `get_unity_editor_state`. Delete any duplicate scene files immediately.
+
+### 2026-05-13 — MCP set_property cannot resolve AudioClip asset references
+**What happened**: `set_property` with an AudioClip asset path (`Assets/Audio/.../*.wav`) returned "Object not found in context". Paths with spaces may be the issue, but even without spaces it's unreliable for asset references.
+**Fix**: Use an editor script with `AssetDatabase.LoadAssetAtPath<AudioClip>(path)` + `SerializedObject` to assign audio clips. See `AssignJetpackSFX.cs` for the pattern.
+
+### 2026-05-13 — AudioListener missing = no audio at all
+**What happened**: All audio systems (JetpackAudioFeedback, PlayerSFX) were correctly wired but produced no sound. Main Camera had no AudioListener component.
+**Fix**: Unity requires exactly one AudioListener in the scene. Verify it exists on Main Camera after any scene setup. Added to the standard room creation checklist.
 
 ### 2026-04-26 — Runtime-created sprites don't persist
 **What happened**: `Sprite.Create(new Texture2D(...))` in editor scripts produces sprites that vanish on scene save/reload (the sprite field becomes empty).

@@ -105,7 +105,7 @@ This project is built step-by-step, collaboratively. Each change should be small
 The game uses **diegetic feedback** instead of HUD bars — the player reads fuel state from the jetpack itself, not from a UI element. This keeps the screen clean and the player's eyes on the action.
 
 - **Exhaust color shift** (`JetpackParticles.cs`): Particle color shifts through a two-stage gradient as fuel drains — cyan (full) to orange (mid) to red (empty). Below 20% fuel, emission sputters on/off rapidly to signal urgency.
-- **Audio burst feedback** (`JetpackAudioFeedback.cs`): Plays a short burst SFX (`SE_14_2E.wav`) repeatedly via `PlayOneShot`. At full fuel, bursts fire near-consecutively (0.08s interval, matching Cave Story's rapid-fire feel). As fuel drains, the interval widens to 0.3s (audible dead time between bursts). Pitch drops from 1.0 to 0.55 with fuel. Below 30% fuel, random pitch jitter adds a "struggling engine" feel. On empty, a dry-fire click plays once.
+- **Audio burst feedback** (`JetpackAudioFeedback.cs`): Plays a short burst SFX (`SE_14_2E.wav`) repeatedly via `PlayOneShot`. At full fuel, bursts fire near-consecutively (0.03s interval). As fuel drains, the interval widens to 0.1s (audible sputtering). Fixed pitch (1.0) throughout — no pitch variation or jitter. Empty click disabled. Component lives on `Player/JetpackAudio` child object; a second `Player/JetpackClick` AudioSource exists for future use.
 - **GasMeterUI.cs** exists as a legacy fill bar but is **intentionally not wired up**. The design direction is to avoid persistent HUD elements for moment-to-moment mechanics. A bar may return later as an accessibility option.
 
 **Design principle**: If the player needs to look away from the character to understand their state, the feedback has failed. All fuel cues are embodied on/around the player sprite or in audio.
@@ -218,7 +218,7 @@ The fusion: maneuvering IS fuel spending. Navigating a corridor drains fuel at a
 - **Fuel feedback**: Diegetic only (particles + audio). No persistent HUD bar. The fuel state is analog and readable by both player and environment.
 - **Gimmicks must interact with the fuel system** — no generic platformer gimmicks that ignore fuel.
 
-## Current State (updated 2026-04-28)
+## Current State (updated 2026-05-13)
 **Project phase: Pre-Production** (passed Technical Setup gate 2026-04-19).
 
 **Movement systems complete and tuned:**
@@ -244,6 +244,7 @@ The fusion: maneuvering IS fuel spending. Navigating a corridor drains fuel at a
 - **Crusher**: Reactive ceiling hazard, detects player below, slams and kills. SpawnTile in palette.
 - **GravitySwitch**: 4-directional gravity change (Down/Up/Left/Right). Flips which surface is "ground" for fuel recharging. Arrow sprites per direction. SpawnTiles in palette.
 - **PlayerSFX**: Event Bus-driven placeholder SFX system (jump/land/dash/death). User assigns Cave Story clips in Inspector.
+- **JetpackAudioFeedback wired** (2026-05-13): SE_14_2E burst clip assigned, fixed pitch, tight intervals (0.03s→0.1s), empty click disabled. AudioListener added to Main Camera. Component on Player/JetpackAudio child.
 
 **Level Editor (built 2026-04-26):**
 - **Tile Palettes**: 5 Cave Story palettes (PrtCave, PrtMimi, PrtOside, PrtFall, PrtHell) + Interactables Palette. All in `Assets/Tiles/Palettes/`.
@@ -254,11 +255,14 @@ The fusion: maneuvering IS fuel spending. Navigating a corridor drains fuel at a
 - **Two-tilemap workflow per room**: `Walls` (ground tiles, Layer 8, colliders) and `Interactables` (SpawnTiles, no colliders, SpawnTileManager). Active Target dropdown in Tile Palette selects which to paint on.
 - **Placeholder sprites** (`Assets/Sprites/Placeholders/`): Shape-coded 16×16 PNGs — spikes (hazard), circle (fuel), diamond (dash), bars (gate), arrow (spawn), slats (closing platform), teeth block (crusher), directional arrows (gravity switches). Color-tinted per type.
 
-**Scene state (TestRoom.unity):**
-- **Coplay MCP installed and working** (`.mcp.json`, `Packages/Coplay/`). Claude Code can create/modify scene objects, run editor scripts, play/stop the game.
+**Scene state (TestRoom.unity, updated 2026-05-13):**
+- **Coplay MCP installed and working** (`.mcp.json`, `Packages/Coplay/`). Claude Code can create/modify scene objects, run editor scripts, play/stop the game. Confirmed working 2026-05-13.
 - **Old MCP rooms deleted** (2026-04-26). Only user-created rooms remain.
-- **ch1-Room-01** (user-built, in progress): 60×34, PrtCave tiles for walls, hazard spikes, Low fuel gate. Tutorial design: safe space → fuel gate comprehension check → danger zone with spikes requiring jetpack+dash combo.
+- **ch1-room-00** (intro room, 2026-05-13): 30×17, flat ground with border walls, right opening. Player starts here. Created via Room Tool (Ctrl+Shift+R), repositioned to x=210.
+- **ch1-Room-01** (user-built, in progress): 60×34, PrtCave tiles for walls, hazard spikes, Low fuel gate. Repositioned to x=255 (right of room-00). Tutorial design: safe space → fuel gate comprehension check → danger zone with spikes requiring jetpack+dash combo.
 - Room transitions via 6-tile openings in left/right walls (y = -8 to -3). RoomManager auto-detects boundary crossings.
+- **Tilemap naming convention**: `Walls-Room00`, `Walls-Room01`, `Interactables-Room00`, `Interactables-Room01` — disambiguated for Tile Palette target dropdown.
+- **AudioListener** on Main Camera (was missing, added 2026-05-13).
 - Ground tile asset at `Assets/Tiles/GroundTile.asset` (white, 16px, Point filter). Cave Story tiles at `Assets/Tiles/PrtCave/` etc.
 
 Architecture documented: 5 GDDs + design-direction.md, 8 ADRs, master architecture doc, traceability matrix.
@@ -278,7 +282,7 @@ Architecture documented: 5 GDDs + design-direction.md, 8 ADRs, master architectu
 - **Landing feedback needed**: squash animation, dust particles, camera response
 - **Air state visual distinction needed**: rising/apex/falling sprite states
 - **Dash trail / afterimage effect** — nice-to-have, after gameplay complete
-- ~~No SFX beyond jetpack~~ → **PlayerSFX.cs implemented** (2026-04-28). Jump/land/dash/death events. Clips need to be assigned in Inspector.
+- ~~No SFX beyond jetpack~~ → **PlayerSFX.cs implemented** (2026-04-28). Jump/land/dash/death events. Clips need to be assigned in Inspector (jetpack audio wired 2026-05-13, PlayerSFX clips still need assignment).
 - No music
 - No title screen or persistent HUD (intentional — minimal UI philosophy)
 - Sprites are Cave Story placeholders (original art Phase 5)
@@ -299,6 +303,8 @@ Architecture documented: 5 GDDs + design-direction.md, 8 ADRs, master architectu
 - **SerializeField values in Inspector override script defaults** — after changing defaults in code, you MUST manually update Inspector values or right-click component → Reset
 - Architecture review flagged: dependency chain described differently across docs — needs reconciliation
 - **MCP execute_script + SerializedObject on existing components may not persist** — use MCP `set_property` tool to change serialized fields on existing components instead
+- **MCP `set_property` cannot resolve AudioClip asset references** — use editor scripts with `AssetDatabase.LoadAssetAtPath` instead. See `AssignJetpackSFX.cs`.
+- **MCP `save_scene` with bare name creates wrong file** — `save_scene("TestRoom")` creates `Assets/TestRoom.unity`. Always use `save_scene("Scenes/TestRoom")`. Use `ForceSaveScene.cs` editor script as a reliable alternative.
 - **Ghost duplicate GameObjects can appear** when editor scripts create objects with the same name as existing ones. Always check `FindObjectsByType` count after scene modifications.
 - **Runtime-created sprites don't persist** — `Sprite.Create(new Texture2D(...))` in editor scripts produces sprites that are lost on scene save/reload. Always use `AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Tiles/GroundSprite.png")` for persistent sprite references. Use `drawMode = SpriteDrawMode.Tiled` with `sr.size` to scale the visual to match collider area.
 - **ASCII layout rows must be exactly 30 chars** — legacy room build scripts scale ASCII 2× to fill 60×34 rooms. No longer relevant since rooms are now built via Tile Palette, but old scripts remain in `Assets/Editor/`.
@@ -325,13 +331,16 @@ Architecture documented: 5 GDDs + design-direction.md, 8 ADRs, master architectu
 
 ## Next Steps
 1. ~~**Level editor workflow**~~ ✓ (2026-04-26)
-2. **Finish ch1-Room-01 tutorial** — user is hand-designing; collaborate on layout
-3. **Assign PlayerSFX clips** — add component to Player, assign Cave Story WAVs in Inspector
-4. **Wire up gun swap zone + shootable targets** — BoosterSwapZone.cs, target interaction system. Unblocks gun puzzle prototyping.
-5. **Test gravity switch in a real room** — build a small test room with directional switches, spikes on multiple surfaces
-6. **Test crusher in a room** — place ceiling crushers the player must dash past
-7. **Landing feedback** — squash animation, dust particles
-8. **Sprint plan** — structure Vertical Slice work into sprints
+2. ~~**Wire jetpack audio**~~ ✓ (2026-05-13) — JetpackAudioFeedback assigned SE_14_2E, tuned intervals
+3. ~~**Add intro room (ch1-room-00)**~~ ✓ (2026-05-13) — flat ground, border walls, player starts here
+4. **Assign PlayerSFX clips** — add PlayerSFX component to Player, assign Cave Story WAVs (jump/land/dash/death)
+5. **Convert ClosingPlatform to timed gate** — user requested design change (2026-05-13)
+6. **Finish ch1-Room-01 tutorial** — user is hand-designing; collaborate on layout
+7. **Wire up gun swap zone + shootable targets** — BoosterSwapZone.cs, target interaction system
+8. **Test gravity switch in a real room** — build a small test room with directional switches
+9. **Test crusher in a room** — place ceiling crushers the player must dash past
+10. **Landing feedback** — squash animation, dust particles
+11. **Sprint plan** — structure Vertical Slice work into sprints
 
 ## Long-Term Plan
 
@@ -396,6 +405,14 @@ When running parallel Claude Code sessions, follow the file ownership rules in t
 
 ## Session Log
 <!-- Each session appends 3-5 bullets. Newest first. -->
+
+### 2026-05-13
+- **MCP confirmed working** — Coplay MCP tools verified live (create/modify GameObjects, set properties, execute editor scripts, play/stop).
+- **Jetpack audio wired**: JetpackAudioFeedback component on Player/JetpackAudio child. SE_14_2E burst clip, fixed pitch (1.0), tight intervals (0.03s full → 0.1s empty), no jitter, empty click disabled. AudioListener added to Main Camera (was missing — no audio played without it).
+- **Intro room (ch1-room-00)**: 30×17, flat ground with border walls, right opening. Created via Room Tool, repositioned to x=210. ch1-Room-01 shifted to x=255. Player starts in room-00.
+- **Tilemap naming disambiguated**: Walls-Room00/01, Interactables-Room00/01 — clearer in Tile Palette target dropdown.
+- **Editor scripts created**: AssignJetpackSFX.cs, ForceSaveScene.cs, DiagnoseJetpackAudio.cs, SetupRoom00Tilemaps.cs.
+- **Lesson learned**: MCP `save_scene` with just "TestRoom" creates `Assets/TestRoom.unity` (wrong path). Always use `Scenes/TestRoom`. Also: MCP `set_property` cannot resolve AudioClip asset references — use editor scripts with `AssetDatabase.LoadAssetAtPath` instead.
 
 ### 2026-04-28
 - Designed 6 chapter gimmick concepts (gravity switches, closing platforms, crushers, gun puzzles, blind zones, crosshair) — all tied to fuel system. Written to `design/gdd/chapter-gimmicks.md`.

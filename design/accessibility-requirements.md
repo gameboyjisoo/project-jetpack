@@ -65,7 +65,7 @@ would require settings menus and input remapping UI that do not yet exist (Phase
 | Colorblind considerations -- fuel gradient | Basic | Jetpack particle system | Needs Review | The fuel state gradient is cyan (full) -> orange (mid) -> red (empty). The orange-to-red transition is problematic for red-green colorblind players (protanopia, deuteranopia -- ~7% of men). The audio pitch channel provides a redundant non-visual signal, partially mitigating this. Future consideration: add a colorblind-friendly palette option or shape-based particle variation. |
 | Color-as-only-indicator audit | Basic | All gameplay feedback | Partial | See audit table below. Audio pitch provides a redundant channel for fuel state, but particle color is currently the only *visual* differentiator for fuel level. |
 | Screen flash / strobe risk | Basic | VFX, particle bursts | Not Assessed | Dash and jetpack activation produce particle bursts. Assess against Harding FPA standard (no more than 3 flashes/sec above luminance threshold). |
-| Screen shake toggle | Basic | Camera system | Not Implemented | Screen shake is planned but not yet implemented. When added, it must ship with a toggle in accessibility settings. |
+| Screen shake toggle | Basic | Camera system | Implemented | Death-only screen shake (0.2s, 0.12 magnitude). `enableScreenShake` toggle on RoomCamera Inspector. Default: on. Implemented 2026-04-28. |
 | Brightness/gamma controls | Basic | Global | Not Started | Deferred to Phase 2+ (settings menu required). |
 
 ### Color-as-Only-Indicator Audit
@@ -161,4 +161,4 @@ would require settings menus and input remapping UI that do not yet exist (Phase
 |----------|-------|----------|-----------|
 | Should GasMeterUI.cs be wired as an opt-in accessibility option before the full settings menu exists (e.g., via a keyboard shortcut toggle)? | pz_ma | Before vertical slice | Unresolved |
 | What colorblind-friendly palette would work for the fuel gradient while maintaining the diegetic art style? | pz_ma | Before Phase 2 | Unresolved |
-| When screen shake is implemented, should the default be on or off? (Accessibility best practice: off by default, or prominently offer the choice at first launch.) | pz_ma | Before screen shake implementation | Unresolved |
+| When screen shake is implemented, should the default be on or off? (Accessibility best practice: off by default, or prominently offer the choice at first launch.) | pz_ma | Before screen shake implementation | **Resolved**: Default is on, death-only (minimal). `enableScreenShake` toggle in Inspector. Settings UI needed for player-facing toggle (Phase 2+). |

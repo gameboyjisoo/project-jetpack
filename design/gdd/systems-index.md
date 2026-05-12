@@ -2,7 +2,7 @@
 
 > **Status**: Draft
 > **Created**: 2026-04-19
-> **Last Updated**: 2026-04-26
+> **Last Updated**: 2026-05-13
 > **Source Concept**: design/gdd/game-concept.md
 
 ---
@@ -23,18 +23,18 @@ Project Jetpack is a fast-paced 2D pixel art platformer inspired by Cave Story's
 | 4 | Secondary Booster | Core | MVP | Implemented | design/gdd/secondary-booster.md | Input System, Gravity System |
 | 5 | Fuel System | Core | MVP | Implemented | design/gdd/fuel-feedback.md | None |
 | 6 | Gravity System | Core | MVP | Implemented | — | Physics2D |
-| 7 | Player Animation | Presentation | MVP | In Progress | — | Player Movement, Jetpack System |
-| 8 | Camera System | Core | MVP | In Progress | — | Player Controller, Room System |
-| 9 | Room System | Core | Vertical Slice | In Progress | — | Camera System |
-| 10 | Respawn System | Core | Vertical Slice | In Progress | — | Room System, Hazard System |
+| 7 | Player Animation | Presentation | MVP | In Progress (placeholder) | — | Player Movement, Jetpack System |
+| 8 | Camera System | Core | MVP | Implemented | — | Player Controller, Room System |
+| 9 | Room System | Core | Vertical Slice | Implemented | — | Camera System |
+| 10 | Respawn System | Core | Vertical Slice | Implemented | — | Room System, Hazard System |
 | 11 | Event Bus | Core | Vertical Slice | Implemented | docs/architecture/adr-0008-event-bus.md | None |
 | 12 | Fuel-State Gates | Gameplay | Vertical Slice | Implemented | design/gdd/design-direction.md | Fuel System, Event Bus |
-| 13 | Gimmick Framework | Gameplay | Vertical Slice | In Progress | — | Event Bus, Chapter Config |
+| 13 | Gimmick Framework | Gameplay | Vertical Slice | Implemented | — | Event Bus, Chapter Config |
 | 14 | Chapter Configuration | Gameplay | Vertical Slice | Not Started | — | Room System, Gimmick Framework |
 | 15 | Booster Mode Swapping (Gun) | Gameplay | Vertical Slice | Implemented | design/gdd/design-direction.md | Secondary Booster |
 | 16 | Momentum / Wavedash | Gameplay | MVP | Implemented | design/gdd/secondary-booster.md | Player Movement, Secondary Booster |
 | 17 | Runtime Tuning Panel | Meta | Vertical Slice | Not Started | — | All player systems |
-| 18 | Audio System | Audio | Vertical Slice | In Progress | — | None |
+| 18 | Audio System | Audio | Vertical Slice | Implemented | — | None |
 | 19 | Hazard System | Gameplay | Vertical Slice | Implemented | — | Physics2D, Respawn System |
 | 20 | Level Editor Workflow | Meta | Vertical Slice | Implemented | — | Room System, Tilemap |
 
@@ -145,8 +145,8 @@ Project Jetpack is a fast-paced 2D pixel art platformer inspired by Cave Story's
 | Design docs reviewed | 0 |
 | Design docs approved | 0 |
 | MVP systems with GDDs | 5/8 (Movement, Jump, Jetpack, Secondary Booster, Fuel Feedback) |
-| Vertical Slice systems implemented | 5 (Event Bus, Fuel-State Gates, Wavedash, Gun Mode, Hazards) |
-| Tutorial rooms built | ch1-Room-01 in progress (hand-designed via Level Editor, 2026-04-26) |
+| Vertical Slice systems implemented | 10 (Event Bus, Fuel-State Gates, Wavedash, Gun Mode, Hazards, Camera, Room, Respawn, Gimmick Framework, Audio) |
+| Tutorial rooms built | ch1-room-00 (intro, 30×17) + ch1-Room-01 (in progress, 60×34) |
 
 ---
 
@@ -168,5 +168,5 @@ Project Jetpack is a fast-paced 2D pixel art platformer inspired by Cave Story's
 - [x] Build Chapter 1 rooms in Unity editor (Tilemaps + placed GameObjects) — Rooms 1-2 built (60×34, 2026-04-21)
 - [x] Test room transitions with real Room objects — working (2026-04-21)
 - [x] Compress tutorial from 15 rooms to 4 (2026-04-26) — Move+Fly, Dash+Survive, The Fork, Graduation
-- [ ] **Level editor workflow** — tile palette, interactable prefabs, room template, editor tools for developer-driven level creation
+- [x] **Level editor workflow** — tile palettes, SpawnTile system, Room Tool (Ctrl+Shift+R). Built 2026-04-26.
 - [ ] Review and approve systems enumeration

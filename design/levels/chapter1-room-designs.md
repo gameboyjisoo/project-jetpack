@@ -1,7 +1,7 @@
 # Chapter 1: Tutorial Room Designs
 
 > **Status**: In Progress (user hand-designing rooms via Level Editor)
-> **Updated**: 2026-04-26
+> **Updated**: 2026-05-13
 > **Room Size**: 60×34 units
 > **Tile Size**: 1×1 units (16px at 16 PPU)
 > **Build method**: Level Editor Workflow — Tile Palette (PrtCave + Interactables) + Room Tool (`Project Jetpack > New Room`)
@@ -9,6 +9,15 @@
 > **Note (2026-04-26)**: Old MCP-generated rooms (MCP_Room_01 through 04) were deleted. Tutorial rooms are now hand-designed by the developer using the Tile Palette workflow. The original 15 ASCII room designs below are reference material, not built.
 
 ## Current Rooms (hand-designed)
+
+### ch1-room-00 (intro room, built 2026-05-13)
+**Teaches**: Basic movement — run and jump on flat ground
+**Size**: 30×17 (standard single-screen)
+**Position**: x=210
+- Flat ground, border walls, right opening only (left wall is solid — starting room)
+- No hazards, no gimmicks — pure movement sandbox
+- Player spawns near left side
+- Walk right to exit into ch1-Room-01
 
 ### ch1-Room-01 (in progress)
 **Teaches**: Fuel state as a key (Low gate), mechanic combination (jetpack + dash)

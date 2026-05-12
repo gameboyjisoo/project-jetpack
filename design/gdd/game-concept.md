@@ -2,7 +2,7 @@
 
 > **Status**: Approved
 > **Created**: 2026-04-07
-> **Last Updated**: 2026-04-26
+> **Last Updated**: 2026-05-13
 
 ## Elevator Pitch
 
@@ -57,15 +57,11 @@ Levels are built using Unity's Tilemap system. Each room is a 60×34 unit area (
 - **Tilemap** (Grid → Walls child) on Layer 8 with CompositeCollider2D (Polygons)
 - **Interactables** as child GameObjects: hazards (Layer 10), pickups (Layer 11), fuel gates, swap zones
 
-**Current workflow**: Rooms are defined as ASCII art (30×14 chars, scaled 2×) in C# editor scripts and built via Coplay MCP. This works for Claude Code but is not developer-friendly.
-
-**Target workflow** (not yet built): The developer should be able to create rooms directly in the Unity editor by:
-1. Painting tiles using a **Tile Palette** with labeled tile types
-2. Dragging **prefabs** for hazards, pickups, gates, and swap zones
-3. Using an **editor tool** that creates properly-configured Room shells (Room component + Grid + Tilemap + colliders) in one click
-4. Duplicating a **room template prefab** and repositioning it
-
-This is a high priority for Phase 2 — the developer needs to iterate on level designs without writing code.
+**Workflow (built 2026-04-26)**: Rooms are built in the Unity editor using the Level Editor Workflow:
+1. **Room Tool** (`Project Jetpack > New Room`, Ctrl+Shift+R) creates Room shells with Walls + Interactables tilemaps, border walls, and transition openings
+2. **Tile Palette** with 5 Cave Story palettes (PrtCave, PrtMimi, PrtOside, PrtFall, PrtHell) + Interactables Palette for hazards/pickups/gates
+3. **SpawnTile system** paints interactables like tiles; prefabs are spawned at runtime by SpawnTileManager
+4. No code required — developer iterates on layouts directly in the editor
 
 ## Unique Selling Point
 
