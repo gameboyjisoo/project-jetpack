@@ -84,7 +84,8 @@ This project is built step-by-step, collaboratively. Each change should be small
 - Three fuel tiers defined as `FuelTier` enum in JetpackGas.cs: High (50-100%), Mid (20-50%), Low (0-20%).
 - **ClosingPlatform.cs**: Timed platform cycling between solid (closed) and passable (open). Default: 2s closed, 1s open, 0.5s warning flash before opening. `cycleOffset` field for staggering multiple platforms. Layer 8 (Ground). Event Bus integration.
 - **Crusher.cs**: Ceiling hazard that detects player below (8-tile detection range, Layer 9), slams down fast (0.1s), holds (0.5s), retracts slowly (1.0s). Kills player on bottom-face contact during slam and hold. State machine: Idle → Warning → Slamming → Holding → Retracting → Cooldown. Warning flash matches ClosingPlatform pattern.
-- **GravitySwitch.cs**: Trigger zone that changes gravity direction via `GravityState.Set()`. 4 directional variants (Down/Up/Left/Right) with color-coded arrow sprites. Publishes `GravitySwitched` event.
+- **GravitySwitch.cs**: Trigger zone that changes gravity direction via `GravityState.Set()`. 4 directional variants (Down/Up/Left/Right) with color-coded arrow sprites. Publishes `GravitySwitched` event. Uses both `OnTriggerEnter2D` and `OnTriggerStay2D` for reliability. **Immediately remaps player velocity** to new gravity axes on switch (decompose in old axes, recompose in new) — prevents 1+ frame momentum carry-through into hazards.
+- **TimedGate.cs**: Gate that opens after a timed countdown (default 3s, 3 buzzes) when player enters a generous detection zone (default 10 units). Adjacent TimedGate blocks auto-group via flood-fill at Start — paint multiple tiles and they act as one logical gate. One block becomes "leader" (owns AudioSource, detection, countdown coroutine). All blocks open/close together. Resets on `PlayerDied`. Assign `buzzClip` in Inspector. Purple placeholder sprite (hourglass). Layer 8 (Ground). SpawnTile + prefab + palette entry created via `SetupTimedGate.cs` editor script.
 
 ### Gravity System (GravityState.cs, 2026-04-28)
 - **Static gravity direction** (`GravityState.Current`): `GravityDir` enum — Down (default), Up, Left, Right. Changes `Physics2D.gravity` when set.
@@ -218,7 +219,7 @@ The fusion: maneuvering IS fuel spending. Navigating a corridor drains fuel at a
 - **Fuel feedback**: Diegetic only (particles + audio). No persistent HUD bar. The fuel state is analog and readable by both player and environment.
 - **Gimmicks must interact with the fuel system** — no generic platformer gimmicks that ignore fuel.
 
-## Current State (updated 2026-05-13)
+## Current State (updated 2026-05-19)
 **Project phase: Pre-Production** (passed Technical Setup gate 2026-04-19).
 
 **Movement systems complete and tuned:**
@@ -239,10 +240,11 @@ The fusion: maneuvering IS fuel spending. Navigating a corridor drains fuel at a
 - Design direction document defines two-pillar identity (maneuvering + fuel timing)
 - **Chapter gimmick concepts documented** (`design/gdd/chapter-gimmicks.md`) — 6 chapters mapped
 
-**Gimmick prototypes (2026-04-28):**
-- **ClosingPlatform**: Timed barrier, cycles open/closed with warning flash. SpawnTile in Interactables Palette.
-- **Crusher**: Reactive ceiling hazard, detects player below, slams and kills. SpawnTile in palette.
-- **GravitySwitch**: 4-directional gravity change (Down/Up/Left/Right). Flips which surface is "ground" for fuel recharging. Arrow sprites per direction. SpawnTiles in palette.
+**Gimmick prototypes:**
+- **ClosingPlatform** (2026-04-28): Timed barrier, cycles open/closed with warning flash. SpawnTile in Interactables Palette.
+- **Crusher** (2026-04-28): Reactive ceiling hazard, detects player below, slams and kills. SpawnTile in palette.
+- **GravitySwitch** (2026-04-28, fixed 2026-05-19): 4-directional gravity change (Down/Up/Left/Right). Flips which surface is "ground" for fuel recharging. Arrow sprites per direction. SpawnTiles in palette. Velocity remapping on switch prevents momentum carry-through.
+- **TimedGate** (2026-05-19): Countdown gate (3 buzzes over 3s). Detection zone triggers countdown, opens on completion, resets on death. Adjacent blocks auto-group. SpawnTile + prefab in palette (purple hourglass). Buzz AudioClip assigned in Inspector.
 - **PlayerSFX**: Event Bus-driven placeholder SFX system (jump/land/dash/death). User assigns Cave Story clips in Inspector.
 - **JetpackAudioFeedback wired** (2026-05-13): SE_14_2E burst clip assigned, fixed pitch, tight intervals (0.03s→0.1s), empty click disabled. AudioListener added to Main Camera. Component on Player/JetpackAudio child.
 
@@ -250,10 +252,10 @@ The fusion: maneuvering IS fuel spending. Navigating a corridor drains fuel at a
 - **Tile Palettes**: 5 Cave Story palettes (PrtCave, PrtMimi, PrtOside, PrtFall, PrtHell) + Interactables Palette. All in `Assets/Tiles/Palettes/`.
 - **672 tile assets** sliced from Cave Story spritesheets (16×16, Point filter, 16 PPU). Uses Unity 6 `ISpriteEditorDataProvider` API.
 - **SpawnTile system** (`Assets/Scripts/Tiles/`): Custom `TileBase` subclass for interactables. Paint them like tiles in the editor; `SpawnTileManager` spawns the real prefab and clears the placeholder at runtime.
-- **Interactable prefabs** (`Assets/Prefabs/Interactables/`): Hazard, FuelPickup, DashPickup, FuelGate_High/Mid/Low, SpawnPoint, Checkpoint, ClosingPlatform, Crusher, GravitySwitch_Down/Up/Left/Right. Each has shape-coded placeholder sprites.
+- **Interactable prefabs** (`Assets/Prefabs/Interactables/`): Hazard, FuelPickup, DashPickup, FuelGate_High/Mid/Low, SpawnPoint, Checkpoint, ClosingPlatform, Crusher, GravitySwitch_Down/Up/Left/Right, TimedGate. Each has shape-coded placeholder sprites.
 - **Room creation tool**: `Project Jetpack > New Room` (Ctrl+Shift+R) — editor window that auto-positions rooms, creates full Room shell with Walls + Interactables tilemaps, paints border walls with transition openings.
 - **Two-tilemap workflow per room**: `Walls` (ground tiles, Layer 8, colliders) and `Interactables` (SpawnTiles, no colliders, SpawnTileManager). Active Target dropdown in Tile Palette selects which to paint on.
-- **Placeholder sprites** (`Assets/Sprites/Placeholders/`): Shape-coded 16×16 PNGs — spikes (hazard), circle (fuel), diamond (dash), bars (gate), arrow (spawn), slats (closing platform), teeth block (crusher), directional arrows (gravity switches). Color-tinted per type.
+- **Placeholder sprites** (`Assets/Sprites/Placeholders/`): Shape-coded 16×16 PNGs — spikes (hazard), circle (fuel), diamond (dash), bars (gate), arrow (spawn), slats (closing platform), teeth block (crusher), directional arrows (gravity switches), hourglass (timed gate). Color-tinted per type.
 
 **Scene state (TestRoom.unity, updated 2026-05-13):**
 - **Coplay MCP installed and working** (`.mcp.json`, `Packages/Coplay/`). Claude Code can create/modify scene objects, run editor scripts, play/stop the game. Confirmed working 2026-05-13.
@@ -308,6 +310,7 @@ Architecture documented: 5 GDDs + design-direction.md, 8 ADRs, master architectu
 - **Ghost duplicate GameObjects can appear** when editor scripts create objects with the same name as existing ones. Always check `FindObjectsByType` count after scene modifications.
 - **Runtime-created sprites don't persist** — `Sprite.Create(new Texture2D(...))` in editor scripts produces sprites that are lost on scene save/reload. Always use `AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Tiles/GroundSprite.png")` for persistent sprite references. Use `drawMode = SpriteDrawMode.Tiled` with `sr.size` to scale the visual to match collider area.
 - **ASCII layout rows must be exactly 30 chars** — legacy room build scripts scale ASCII 2× to fill 60×34 rooms. No longer relevant since rooms are now built via Tile Palette, but old scripts remain in `Assets/Editor/`.
+- **Static lists in gimmicks persist across editor play sessions** — `static readonly List<T>` fields survive Play → Stop → Play in the editor, leaving destroyed object references. Any gimmick with a static collection must clear it via `[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]`. Learned from TimedGate auto-grouping (2026-05-19).
 
 ## Level Editor Setup (2026-04-26)
 - **Cave Story tilesets sliced**: All 5 Prt sheets (Cave, Mimi, Oside, Fall, Hell) fixed to 16 PPU, Point filter, sliced into 16×16 grids via `ISpriteEditorDataProvider` (Unity 6 API — `TextureImporter.spritesheet` is deprecated and doesn't work).
@@ -334,13 +337,14 @@ Architecture documented: 5 GDDs + design-direction.md, 8 ADRs, master architectu
 2. ~~**Wire jetpack audio**~~ ✓ (2026-05-13) — JetpackAudioFeedback assigned SE_14_2E, tuned intervals
 3. ~~**Add intro room (ch1-room-00)**~~ ✓ (2026-05-13) — flat ground, border walls, player starts here
 4. **Assign PlayerSFX clips** — add PlayerSFX component to Player, assign Cave Story WAVs (jump/land/dash/death)
-5. **Convert ClosingPlatform to timed gate** — user requested design change (2026-05-13)
-6. **Finish ch1-Room-01 tutorial** — user is hand-designing; collaborate on layout
-7. **Wire up gun swap zone + shootable targets** — BoosterSwapZone.cs, target interaction system
-8. **Test gravity switch in a real room** — build a small test room with directional switches
-9. **Test crusher in a room** — place ceiling crushers the player must dash past
-10. **Landing feedback** — squash animation, dust particles
-11. **Sprint plan** — structure Vertical Slice work into sprints
+5. ~~**TimedGate gimmick**~~ ✓ (2026-05-19) — countdown gate with auto-grouping, 3 buzzes, resets on death. SpawnTile + prefab + palette entry. Replaces "convert ClosingPlatform" task.
+6. ~~**GravitySwitch velocity fix**~~ ✓ (2026-05-19) — immediate velocity remapping on gravity flip prevents momentum carry-through deaths
+7. **Assign TimedGate buzz AudioClip** — pick a Cave Story WAV for the countdown buzz sound
+8. **Finish ch1-Room-01 tutorial** — user is hand-designing; collaborate on layout
+9. **Wire up gun swap zone + shootable targets** — BoosterSwapZone.cs, target interaction system
+10. **Test crusher in a room** — place ceiling crushers the player must dash past
+11. **Landing feedback** — squash animation, dust particles
+12. **Sprint plan** — structure Vertical Slice work into sprints
 
 ## Long-Term Plan
 
@@ -353,12 +357,12 @@ Architecture documented: 5 GDDs + design-direction.md, 8 ADRs, master architectu
 
 ### Phase 3 — Chapter 2+ (Gimmick Chapters)
 Each chapter introduces one new gimmick. See `design/gdd/chapter-gimmicks.md` for the full plan:
-- **Ch2**: Gravity switches (**prototype built** 2026-04-28, needs room testing)
+- **Ch2**: Gravity switches (**prototype built** 2026-04-28, velocity fix 2026-05-19, needs room testing)
 - **Ch3**: Closing platforms + crushers (**prototypes built** 2026-04-28)
 - **Ch4**: Gun puzzles (needs BoosterSwapZone + shootable target)
 - **Ch5**: Blind zones (concept only)
 - **Ch6**: Crosshair / timed dashes (concept only)
-- **Cross-chapter**: Wind turbines as fuel drain modifier (concept only)
+- **Cross-chapter**: TimedGate (**prototype built** 2026-05-19), wind turbines as fuel drain modifier (concept only)
 15-20 rooms per chapter. Booster mode can change mid-chapter or mid-room via BoosterSwapZone.
 
 ### Phase 4 — Speedrun & Mastery Layer
@@ -390,6 +394,11 @@ Replace all Cave Story sprites. Original character, tilesets, effects. Soundtrac
 - **GravitySwitch gimmick**: 4-directional trigger zones with per-direction arrow sprites.
 - **Palette append workflow**: `AddTileToPalette.cs` and `SetupNewGimmicks.cs` use `PrefabUtility.LoadPrefabContents` to safely append tiles without rebuilding. Learned after `CreateSpawnTiles.Execute()` destroyed user's painted interactables.
 
+## Fixes Applied (2026-05-19)
+- **TimedGate gimmick**: New countdown gate — 3 buzzes over configurable time (default 3s), generous detection zone (10 units), opens after countdown, resets on `PlayerDied`. Adjacent blocks auto-group via flood-fill (no manual group IDs needed). Leader block owns AudioSource + coroutine. `SetupTimedGate.cs` editor script creates sprite, prefab, SpawnTile, and palette entry.
+- **TimedGate static list fix**: `allGates` static list retained destroyed references across editor play sessions, breaking flood-fill grouping. Fixed with `[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]` to clear on play. Also switched from `StopAllCoroutines()` to tracked `Coroutine` reference for precise cancellation.
+- **GravitySwitch velocity remapping**: Player velocity was not redirected when gravity flipped — old momentum carried the player into hazards for 1+ frames. Now decomposes velocity in old gravity axes and recomposes in new axes immediately in `TrySwitch()`. Also added `OnTriggerStay2D` alongside `OnTriggerEnter2D` for reliability.
+
 ## Multi-Session Protocol
 When running parallel Claude Code sessions, follow the file ownership rules in the design spec:
 - **Track A sessions** only touch: `Assets/Scripts/Player/`, `Assets/Scripts/UI/`
@@ -405,6 +414,12 @@ When running parallel Claude Code sessions, follow the file ownership rules in t
 
 ## Session Log
 <!-- Each session appends 3-5 bullets. Newest first. -->
+
+### 2026-05-19
+- **TimedGate gimmick built**: Countdown gate (3 buzzes over 3s, configurable). Detection zone triggers countdown, gate opens on completion, resets on `PlayerDied`. Adjacent blocks auto-group via flood-fill — paint multiple tiles and they act as one gate. Leader owns AudioSource + coroutine. Static list cleared via `RuntimeInitializeOnLoadMethod` to prevent stale editor references.
+- **TimedGate pipeline**: `SetupTimedGate.cs` editor script creates placeholder sprite (hourglass, purple), prefab (Layer 8, BoxCollider2D, TimedGate), SpawnTile asset, and appends to Interactables Palette. Run via menu: Project Jetpack > Setup > Create Timed Gate Assets.
+- **GravitySwitch velocity fix**: Added immediate velocity remapping on gravity flip — decompose velocity in old axes, recompose in new axes. Prevents 1+ frame momentum carry-through that was killing players after touching the switch. Also added `OnTriggerStay2D` alongside `OnTriggerEnter2D` for reliability.
+- **TimedGate death-reset fix**: Fixed bug where countdown continued after player death. Root cause: static `allGates` list retained destroyed references across play sessions, breaking flood-fill grouping. Fixed with `RuntimeInitializeOnLoadMethod` + tracked coroutine reference.
 
 ### 2026-05-13
 - **MCP confirmed working** — Coplay MCP tools verified live (create/modify GameObjects, set properties, execute editor scripts, play/stop).

@@ -18,12 +18,29 @@ public class GravitySwitch : MonoBehaviour
         col.isTrigger = true;
     }
 
-    private void OnTriggerEnter2D(Collider2D other)
+    private void OnTriggerEnter2D(Collider2D other) => TrySwitch(other);
+    private void OnTriggerStay2D(Collider2D other) => TrySwitch(other);
+
+    private void TrySwitch(Collider2D other)
     {
         if (!other.CompareTag("Player")) return;
         if (GravityState.Current == targetDirection) return;
 
+        // Decompose velocity in OLD gravity axes before switching
+        var rb = other.attachedRigidbody;
+        float moveSpeed = 0f;
+        float upSpeed = 0f;
+        if (rb != null)
+        {
+            moveSpeed = GravityState.GetMoveSpeed(rb.linearVelocity);
+            upSpeed = GravityState.GetUpSpeed(rb.linearVelocity);
+        }
+
         GravityState.Set(targetDirection);
+
+        // Recompose velocity in NEW gravity axes — no leftover momentum in the old direction
+        if (rb != null)
+            rb.linearVelocity = GravityState.ComposeVelocity(moveSpeed, upSpeed);
 
         GameEventBus.Publish(new GravitySwitched
         {

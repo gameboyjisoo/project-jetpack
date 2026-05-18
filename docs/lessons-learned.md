@@ -43,7 +43,17 @@ Append-only log of hard-won knowledge. Things that aren't obvious from reading t
 
 ---
 
-## Unity Engine
+## Unity Engine / C#
+
+### 2026-05-19 — Static lists persist across editor play sessions
+**What happened**: `TimedGate` used a `static readonly List<TimedGate> allGates` for auto-grouping via flood-fill. After Play → Stop → Play, the list contained destroyed references from the previous session. Flood-fill built broken groups where the "leader" was a dead object that couldn't stop its coroutine, so the countdown continued through death.
+**Fix**: Add `[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]` to clear any static collections when entering play mode. This applies to ALL scripts with static state, not just TimedGate.
+
+### 2026-05-19 — Gravity flip must remap velocity immediately
+**What happened**: `GravitySwitch` changed `GravityState.Current` and `Physics2D.gravity` instantly, but the player's `rb.linearVelocity` still pointed in the old direction. With gravity=0 during jetpack, the old velocity persisted for 1+ frames, carrying the player into hazards.
+**Fix**: In `GravitySwitch.TrySwitch()`, decompose velocity into move/up components using OLD gravity axes, then recompose using NEW gravity axes before the next physics frame. This must happen synchronously in the same method that calls `GravityState.Set()`.
+
+### 2026-04-21 — CompositeCollider2D must use Polygons, not Outlines
 
 ### 2026-04-21 — CompositeCollider2D must use Polygons, not Outlines
 **What happened**: Ground detection broke. Raycasts starting just below the floor surface hit the bottom edge of an Outlines collider (which has a downward-facing normal), failing the `normal.y > 0.7` check.
